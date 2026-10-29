@@ -83,6 +83,15 @@ function normalizeContent(raw: any): SiteContent {
   if (!Array.isArray(base.navItems) || base.navItems.length === 0) {
     base.navItems = DEFAULT_NAV_ITEMS;
   }
+  if (base.promosVisible === undefined) {
+    base.promosVisible = true;
+  }
+  if (Array.isArray(base.promos)) {
+    base.promos = base.promos.map((p) => ({
+      ...p,
+      visible: p.visible !== false,
+    }));
+  }
   if (!base.contact) {
     base.contact = INITIAL_CONTENT.contact;
   } else {
@@ -898,55 +907,63 @@ export default function App() {
         </section>
 
         {/* Featured Projects / Promo Section */}
-        <section
-          aria-label="Featured projects"
-          className="promo-section"
-          id="feature-promo"
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: "36px" }}>
-            {(content.promos && content.promos.length > 0 ? content.promos : INITIAL_CONTENT.promos).map((item, idx) => (
-              <a
-                key={item.id || idx}
-                aria-label={`${item.subtitle || 'Featured Project'} - inquire`}
-                className="promo-card"
-                href={item.url}
-              >
-                <img
-                  alt="Abstract monochrome beam of light, campaign image"
-                  className="promo-photo"
-                  src={item.image || "/images/promo-example.jpg"}
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.onerror = null;
-                    img.src = "/images/promo-example.svg";
-                  }}
-                />
-                <div className="promo-shade" />
-                <div className="promo-header">
-                  <span>{item.badgeTopLeft || "LIGHTHOUSE / FEATURED PROJECT"}</span>
-                  <span>{item.badgeTopRight || `0${idx + 1} — SPECIAL PROJECT`}</span>
-                </div>
-                <div className="promo-bottom">
-                  <div className="promo-copy">
-                    <span className="promo-kicker">{item.kicker || "EXPLORE BEYOND THE SCREEN"}</span>
-                    <h2>
-                      {(item.titleLines || []).map((line, lIdx) => (
-                        <React.Fragment key={lIdx}>
-                          {line}
-                          {lIdx < item.titleLines.length - 1 && <br />}
-                        </React.Fragment>
-                      ))}
-                    </h2>
-                    <p>{item.subtitle}</p>
-                  </div>
-                  <span className="promo-cta">
-                    {item.ctaText || "STORE / EXPLORE"} <span aria-hidden="true">↗</span>
-                  </span>
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
+        {content.promosVisible !== false && (() => {
+          const promoItems = (content.promos && content.promos.length > 0 ? content.promos : INITIAL_CONTENT.promos)
+            .filter((item) => item.visible !== false);
+          if (promoItems.length === 0) return null;
+
+          return (
+            <section
+              aria-label="Featured projects"
+              className="promo-section"
+              id="feature-promo"
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: "36px" }}>
+                {promoItems.map((item, idx) => (
+                  <a
+                    key={item.id || idx}
+                    aria-label={`${item.subtitle || 'Featured Project'} - inquire`}
+                    className="promo-card"
+                    href={item.url}
+                  >
+                    <img
+                      alt="Abstract monochrome beam of light, campaign image"
+                      className="promo-photo"
+                      src={item.image || "/images/promo-example.jpg"}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.onerror = null;
+                        img.src = "/images/promo-example.svg";
+                      }}
+                    />
+                    <div className="promo-shade" />
+                    <div className="promo-header">
+                      <span>{item.badgeTopLeft || "LIGHTHOUSE / FEATURED PROJECT"}</span>
+                      <span>{item.badgeTopRight || `0${idx + 1} — SPECIAL PROJECT`}</span>
+                    </div>
+                    <div className="promo-bottom">
+                      <div className="promo-copy">
+                        <span className="promo-kicker">{item.kicker || "EXPLORE BEYOND THE SCREEN"}</span>
+                        <h2>
+                          {(item.titleLines || []).map((line, lIdx) => (
+                            <React.Fragment key={lIdx}>
+                              {line}
+                              {lIdx < item.titleLines.length - 1 && <br />}
+                            </React.Fragment>
+                          ))}
+                        </h2>
+                        <p>{item.subtitle}</p>
+                      </div>
+                      <span className="promo-cta">
+                        {item.ctaText || "STORE / EXPLORE"} <span aria-hidden="true">↗</span>
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Contact Section */}
         <section className="contact" id="contact">
@@ -973,10 +990,6 @@ export default function App() {
               </div>
 
               <div className="contact-links">
-                <a href={`mailto:${content.contact?.email || "keeper@lighthouse.re.kr"}`}>
-                  <span className="contact-val">{content.contact?.email || "keeper@lighthouse.re.kr"}</span>
-                  <span className="contact-arrow">↗</span>
-                </a>
                 <a
                   href={content.contact?.youtubeUrl || "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg"}
                   rel="noopener noreferrer"

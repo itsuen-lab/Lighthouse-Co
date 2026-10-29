@@ -25,6 +25,7 @@ export interface PromoCard {
   ctaText?: string;
   url: string;
   image: string;
+  visible?: boolean;
 }
 
 export interface NavItem {
@@ -60,6 +61,7 @@ export interface SiteContent {
     url: string;
   };
   promos: PromoCard[];
+  promosVisible?: boolean;
   contact?: ContactInfo;
 }
 
@@ -227,8 +229,10 @@ export const INITIAL_CONTENT: SiteContent = {
       ctaText: "STORE / EXPLORE",
       url: "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
       image: "/images/promo-example.jpg",
+      visible: true,
     }
   ],
+  promosVisible: true,
   contact: {
     email: "keeper@lighthouse.re.kr",
     youtubeUrl: "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg",
