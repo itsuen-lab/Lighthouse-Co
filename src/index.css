@@ -698,7 +698,32 @@ button:focus-visible {
   .contact-grid {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.02fr);
     gap: clamp(48px, 6vw, 84px);
+    align-items: stretch;
   }
+
+  .contact-form-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .inquiry-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .inquiry-form-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+  }
+}
+
+.contact-info-col {
+  display: flex;
+  flex-direction: column;
 }
 
 .contact-info-col h2 {
@@ -732,14 +757,14 @@ button:focus-visible {
 
 .contact-links {
   border-top: 1px solid rgba(255, 255, 255, 0.22);
-  max-width: 600px;
+  max-width: none;
 }
 
 .contact-links > a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
+  padding: 24px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   text-decoration: none;
   color: inherit;
@@ -751,20 +776,7 @@ button:focus-visible {
   transform: translateX(4px);
 }
 
-.contact-link-body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.contact-link-body .contact-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #888;
-}
-
-.contact-link-body .contact-val {
+.contact-links .contact-val {
   font-size: clamp(17px, 1.8vw, 26px);
   font-weight: 400;
   letter-spacing: -0.02em;
@@ -784,13 +796,15 @@ button:focus-visible {
 }
 
 .contact-copyright-badge {
-  margin-top: 36px;
+  margin-top: clamp(40px, 4.5vw, 60px);
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 11px;
   letter-spacing: 0.12em;
   color: #666;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 24px;
 }
 
 .contact-meta-dot {
@@ -802,15 +816,16 @@ button:focus-visible {
 .inquiry-card {
   background: #111111;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  padding: clamp(26px, 3.8vw, 42px);
+  padding: clamp(24px, 3.2vw, 38px);
   position: relative;
   box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.85);
+  box-sizing: border-box;
 }
 
 .inquiry-card-header {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 18px;
+  padding-bottom: 16px;
 }
 
 .inquiry-kicker {
@@ -851,13 +866,13 @@ button:focus-visible {
 .inquiry-form-inner {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .inquiry-field-group {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
 }
 
 .inquiry-label {
@@ -876,13 +891,13 @@ button:focus-visible {
 }
 
 .inquiry-category-chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
 .inquiry-cat-chip {
-  padding: 8px 14px;
+  padding: 9px 8px;
   font-size: 12px;
   font-weight: 500;
   background: #181818;
@@ -892,7 +907,9 @@ button:focus-visible {
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .inquiry-cat-chip:hover {

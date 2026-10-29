@@ -164,10 +164,9 @@ export default function App() {
   const scenesRef = useRef<(HTMLElement | null)[]>([]);
 
   // Inquiry Form State & Handlers
-  const [inquiryCategory, setInquiryCategory] = useState<string>("상영 / 대관");
+  const [inquiryCategory, setInquiryCategory] = useState<string>("배급/협업 제안");
   const [inquiryName, setInquiryName] = useState("");
   const [inquiryContact, setInquiryContact] = useState("");
-  const [inquirySubject, setInquirySubject] = useState("");
   const [inquiryMessage, setInquiryMessage] = useState("");
   const [inquiryStatus, setInquiryStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [inquiryErrorMsg, setInquiryErrorMsg] = useState<string | null>(null);
@@ -211,6 +210,8 @@ export default function App() {
       minute: "2-digit",
     });
 
+    const autoSubject = `[${inquiryCategory}] ${trimmedName}님의 문의`;
+
     const payloadData: Record<string, string> = {
       name: trimmedName,
       이름: trimmedName,
@@ -220,8 +221,8 @@ export default function App() {
       phone: trimmedContact,
       category: inquiryCategory,
       문의유형: inquiryCategory,
-      subject: inquirySubject.trim() || `[${inquiryCategory}] ${trimmedName} 문의`,
-      제목: inquirySubject.trim() || `[${inquiryCategory}] ${trimmedName} 문의`,
+      subject: autoSubject,
+      제목: autoSubject,
       message: trimmedMessage,
       문의내용: trimmedMessage,
       timestamp: now.toISOString(),
@@ -267,7 +268,6 @@ export default function App() {
   const handleResetInquiryForm = () => {
     setInquiryName("");
     setInquiryContact("");
-    setInquirySubject("");
     setInquiryMessage("");
     setInquiryStatus("idle");
     setInquiryErrorMsg(null);
@@ -964,20 +964,17 @@ export default function App() {
               <h2>CONTACT.</h2>
               <div className="contact-lead-box">
                 <p className="contact-lead-title">
-                  LIGHTHOUSE FILM DISTRIBUTION & CINEMATHEQUE
+                  Lighthouse Co
                 </p>
                 <p className="contact-lead-desc">
-                  영화 배급, 특별 기획 상영, 극장 대관 및 작품 제휴 문의를 환영합니다.
-                  우측 온라인 문의 폼을 통해 접수해 주시거나 아래 공식 연락처로 문의 바랍니다.
+                  영화 배급 및 프로젝트 협업, 상영에 관한 문의는<br />
+                  이메일 혹은 &apos;문의 접수하기&apos; 폼을 통해 접수 부탁드리겠습니다.
                 </p>
               </div>
 
               <div className="contact-links">
                 <a href={`mailto:${content.contact?.email || "keeper@lighthouse.re.kr"}`}>
-                  <div className="contact-link-body">
-                    <span className="contact-label">EMAIL INQUIRY</span>
-                    <span className="contact-val">{content.contact?.email || "keeper@lighthouse.re.kr"}</span>
-                  </div>
+                  <span className="contact-val">{content.contact?.email || "keeper@lighthouse.re.kr"}</span>
                   <span className="contact-arrow">↗</span>
                 </a>
                 <a
@@ -985,10 +982,7 @@ export default function App() {
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  <div className="contact-link-body">
-                    <span className="contact-label">OFFICIAL CHANNEL</span>
-                    <span className="contact-val">YouTube</span>
-                  </div>
+                  <span className="contact-val">YouTube</span>
                   <span className="contact-arrow">↗</span>
                 </a>
                 <a
@@ -996,10 +990,7 @@ export default function App() {
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  <div className="contact-link-body">
-                    <span className="contact-label">OFFICIAL SOCIAL</span>
-                    <span className="contact-val">Instagram</span>
-                  </div>
+                  <span className="contact-val">Instagram</span>
                   <span className="contact-arrow">↗</span>
                 </a>
                 <a
@@ -1007,18 +998,9 @@ export default function App() {
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  <div className="contact-link-body">
-                    <span className="contact-label">COMMUNITY</span>
-                    <span className="contact-val">X</span>
-                  </div>
+                  <span className="contact-val">X</span>
                   <span className="contact-arrow">↗</span>
                 </a>
-              </div>
-
-              <div className="contact-copyright-badge">
-                <span>© LIGHTHOUSE. ALL RIGHTS RESERVED.</span>
-                <span className="contact-meta-dot">●</span>
-                <span>SEOUL, KOREA</span>
               </div>
             </div>
 
@@ -1032,7 +1014,7 @@ export default function App() {
                   </div>
                   <h3 className="inquiry-heading">문의 접수하기</h3>
                   <p className="inquiry-subheading">
-                    접수된 문의는 구글 시트로 안전하게 기록되며 담당자 확인 후 신속히 회신드립니다.
+                    접수된 문의는 담당자 확인 후 회신드리겠습니다.
                   </p>
                 </div>
 
@@ -1101,12 +1083,12 @@ export default function App() {
                     <input
                       type="hidden"
                       name="subject"
-                      value={inquirySubject.trim() || `[${inquiryCategory}] ${inquiryName.trim()} 문의`}
+                      value={`[${inquiryCategory}] ${inquiryName.trim() || "방문자"}님의 문의`}
                     />
                     <input
                       type="hidden"
                       name="제목"
-                      value={inquirySubject.trim() || `[${inquiryCategory}] ${inquiryName.trim()} 문의`}
+                      value={`[${inquiryCategory}] ${inquiryName.trim() || "방문자"}님의 문의`}
                     />
                     <input type="hidden" name="message" value={inquiryMessage} />
                     <input type="hidden" name="문의내용" value={inquiryMessage} />
@@ -1117,7 +1099,7 @@ export default function App() {
                       value={new Date().toLocaleString("ko-KR")}
                     />
 
-                    {/* Category Selector */}
+                    {/* Category Selector (3 Categories: 배급/협업 제안, 상영 문의, 기타) */}
                     <div className="inquiry-field-group">
                       <label className="inquiry-label">
                         <span>문의 유형 / CATEGORY</span>
@@ -1125,10 +1107,9 @@ export default function App() {
                       </label>
                       <div className="inquiry-category-chips">
                         {[
-                          "상영 / 대관",
-                          "배급 / 판권",
-                          "보도 / 제휴",
-                          "일반 문의",
+                          "배급/협업 제안",
+                          "상영 문의",
+                          "기타",
                         ].map((cat) => (
                           <button
                             type="button"
@@ -1154,7 +1135,7 @@ export default function App() {
                         type="text"
                         required
                         className="inquiry-text-input"
-                        placeholder="예: 홍길동 또는 시네마클럽"
+                        placeholder="예: 닐 하위 또는 서머아일"
                         value={inquiryName}
                         onChange={(e) => {
                           setInquiryName(e.target.value);
@@ -1166,7 +1147,7 @@ export default function App() {
                     {/* Email / Contact */}
                     <div className="inquiry-field-group">
                       <label className="inquiry-label" htmlFor="inquiry-contact-input">
-                        <span>회신 연락처 (이메일 또는 휴대폰 번호)</span>
+                        <span>연락처 (이메일 / 휴대전화)</span>
                         <span className="inquiry-required-mark">*</span>
                       </label>
                       <input
@@ -1174,27 +1155,12 @@ export default function App() {
                         type="text"
                         required
                         className="inquiry-text-input"
-                        placeholder="예: name@example.com 또는 010-0000-0000"
+                        placeholder="예: kozue@eureka.com / 010-0000-0000"
                         value={inquiryContact}
                         onChange={(e) => {
                           setInquiryContact(e.target.value);
                           if (inquiryErrorMsg) setInquiryErrorMsg(null);
                         }}
-                      />
-                    </div>
-
-                    {/* Subject (Optional) */}
-                    <div className="inquiry-field-group">
-                      <label className="inquiry-label" htmlFor="inquiry-subject-input">
-                        <span>문의 제목 (선택)</span>
-                      </label>
-                      <input
-                        id="inquiry-subject-input"
-                        type="text"
-                        className="inquiry-text-input"
-                        placeholder="문의 제목을 간략히 작성해 주세요"
-                        value={inquirySubject}
-                        onChange={(e) => setInquirySubject(e.target.value)}
                       />
                     </div>
 
@@ -1207,9 +1173,9 @@ export default function App() {
                       <textarea
                         id="inquiry-message-input"
                         required
-                        rows={4}
+                        rows={3}
                         className="inquiry-textarea-input"
-                        placeholder="문의하실 구체적인 내용, 상영 희망 일자, 대관 목적 등을 자유롭게 작성해 주세요."
+                        placeholder="문의하실 구체적인 내용을 자유롭게 작성해 주세요."
                         value={inquiryMessage}
                         onChange={(e) => {
                           setInquiryMessage(e.target.value);
@@ -1253,6 +1219,12 @@ export default function App() {
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="contact-copyright-badge">
+            <span>© LIGHTHOUSE. ALL RIGHTS RESERVED.</span>
+            <span className="contact-meta-dot">●</span>
+            <span>SEOUL, KOREA</span>
           </div>
         </section>
       </main>
