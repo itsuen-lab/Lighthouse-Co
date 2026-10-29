@@ -6,6 +6,7 @@
 import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebase.ts";
 import { SiteContent, INITIAL_CONTENT, DEFAULT_NAV_ITEMS } from "../data/content.ts";
+import { resolveAssetUrl } from "../utils/assets.ts";
 
 export const CONTENT_COLLECTION = "site_content";
 export const CONTENT_DOC_ID = "main";
@@ -48,7 +49,7 @@ export function normalizeContent(raw: any): SiteContent {
             typeof film.posterImage !== "string" ||
             film.posterImage.includes("images.unsplash.com/photo-1485846234645"))
         ) {
-          film.posterImage = "/assets/aistudio/___________________________________________2_5ecc6cfd.jpg";
+          film.posterImage = resolveAssetUrl("/assets/aistudio/___________________________________________2_5ecc6cfd.jpg");
         }
         return film;
       });

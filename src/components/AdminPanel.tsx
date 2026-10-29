@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT } from "../data/content.ts";
 import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
+import { resolveAssetUrl } from "../utils/assets.ts";
 import {
   Film as FilmIcon,
   Quote,
@@ -529,7 +530,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <img
             alt="LIGHTHOUSE"
-            src="/assets/aistudio/Lighthouse_a4cd72d2.png"
+            src={resolveAssetUrl("/assets/aistudio/Lighthouse_a4cd72d2.png")}
             style={{ height: "24px", width: "auto" }}
           />
           <span

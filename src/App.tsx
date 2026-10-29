@@ -9,6 +9,7 @@ import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from
 import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { AdminPanel } from "./components/AdminPanel.tsx";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
+import { resolveAssetUrl } from "./utils/assets.ts";
 
 function getYouTubeVideoId(url?: string): string | null {
   if (!url) return null;
@@ -141,7 +142,7 @@ export default function App() {
 
   // Hover poster magnetic state
   const [posterVisible, setPosterVisible] = useState(false);
-  const [posterSrc, setPosterSrc] = useState<string>("/images/sample-poster.jpg");
+  const [posterSrc, setPosterSrc] = useState<string>(() => resolveAssetUrl("/images/sample-poster.jpg"));
   const posterRef = useRef<HTMLDivElement>(null);
   const posterPosRef = useRef({
     curX: 0,
@@ -652,11 +653,11 @@ export default function App() {
           <img
             alt="LIGHTHOUSE"
             className="logo"
-            src="/assets/aistudio/Lighthouse_a4cd72d2.png"
+            src={resolveAssetUrl("/assets/aistudio/Lighthouse_a4cd72d2.png")}
             onError={(e) => {
               const target = e.currentTarget;
               target.onerror = null;
-              target.src = "/images/lighthouse-logo.png";
+              target.src = resolveAssetUrl("/images/lighthouse-logo.png");
             }}
           />
           <span className="location">SEOUL · KOREA</span>
@@ -724,7 +725,7 @@ export default function App() {
           id="home"
         >
           {finalHeroSlides.map((slide, index) => {
-            const fallbackImg = `/images/hero-fallback-${(index % 3) + 1}.jpg`;
+            const fallbackImg = resolveAssetUrl(`/images/hero-fallback-${(index % 3) + 1}.jpg`);
             const isFilm = slide.type === "film";
 
             return (
@@ -741,7 +742,7 @@ export default function App() {
                     alt=""
                     className="bg"
                     loading={index === 0 ? "eager" : "lazy"}
-                    src={slide.image || fallbackImg}
+                    src={resolveAssetUrl(slide.image) || fallbackImg}
                     onError={(e) => {
                       const img = e.currentTarget;
                       img.onerror = null;
@@ -933,11 +934,11 @@ export default function App() {
                     <img
                       alt="Abstract monochrome beam of light, campaign image"
                       className="promo-photo"
-                      src={item.image || "/images/promo-example.jpg"}
+                      src={resolveAssetUrl(item.image) || resolveAssetUrl("/images/promo-example.jpg")}
                       onError={(e) => {
                         const img = e.currentTarget;
                         img.onerror = null;
-                        img.src = "/images/promo-example.svg";
+                        img.src = resolveAssetUrl("/images/promo-example.svg");
                       }}
                     />
                     <div className="promo-shade" />
@@ -1283,11 +1284,11 @@ export default function App() {
           <img
             alt={activeFilm.title}
             className="still"
-            src={activeFilm.heroImage || "/images/hero-fallback-1.jpg"}
+            src={resolveAssetUrl(activeFilm.heroImage) || resolveAssetUrl("/images/hero-fallback-1.jpg")}
             onError={(e) => {
               const img = e.currentTarget;
               img.onerror = null;
-              img.src = "/images/hero-fallback-1.jpg";
+              img.src = resolveAssetUrl("/images/hero-fallback-1.jpg");
             }}
           />
 
