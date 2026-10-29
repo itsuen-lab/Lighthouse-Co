@@ -376,8 +376,10 @@ export default function App() {
 
         const vh = window.innerHeight || 1;
         const rect = scene.getBoundingClientRect();
-        const entry = clamp(1 - rect.top / vh, 0, 1);
-        const shade = index === 0 ? 0 : (1 - entry) * 0.3;
+        const nextScene = scenesRef.current[index + 1];
+        const nextRect = nextScene ? nextScene.getBoundingClientRect() : null;
+        const coverProgress = nextRect ? clamp(1 - nextRect.top / vh, 0, 1) : 0;
+        const shade = coverProgress * 0.35;
         const p = clamp((rect.top - vh * 0.14) / vh, -1, 1);
 
         scene.style.setProperty("--curtain-shade", shade.toFixed(3));
