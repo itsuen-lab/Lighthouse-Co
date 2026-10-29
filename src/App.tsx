@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { INITIAL_CONTENT, Film, SiteContent } from "./data/content.ts";
+import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem } from "./data/content.ts";
 import { SlidersHorizontal, ArrowUpRight } from "lucide-react";
 import { AdminPanel } from "./components/AdminPanel.tsx";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
@@ -79,6 +79,9 @@ function normalizeContent(raw: any): SiteContent {
       }
       return f;
     });
+  }
+  if (!Array.isArray(base.navItems) || base.navItems.length === 0) {
+    base.navItems = DEFAULT_NAV_ITEMS;
   }
   return base;
 }
@@ -532,24 +535,37 @@ export default function App() {
         </a>
 
         <nav className="nav" aria-label="Main Navigation">
-          <a
-            href="#programs"
-            onClick={(e) => scrollToSection("programs", e)}
-          >
-            PROGRAMS
-          </a>
-          <a
-            href="#about"
-            onClick={(e) => scrollToSection("about", e)}
-          >
-            ABOUT
-          </a>
-          <a
-            href="#contact"
-            onClick={(e) => scrollToSection("contact", e)}
-          >
-            CONTACT
-          </a>
+          {(content.navItems || DEFAULT_NAV_ITEMS)
+            .filter((item) => item.visible !== false)
+            .map((item) => {
+              const url = (item.url || "").trim();
+              const isSectionHash = url.startsWith("#");
+
+              if (isSectionHash) {
+                const sectionId = url.replace(/^#/, "");
+                return (
+                  <a
+                    key={item.id}
+                    href={url}
+                    onClick={(e) => scrollToSection(sectionId, e)}
+                  >
+                    {item.label}
+                  </a>
+                );
+              }
+
+              const isBlank = item.targetBlank !== false;
+              return (
+                <a
+                  key={item.id}
+                  href={url}
+                  target={isBlank ? "_blank" : undefined}
+                  rel={isBlank ? "noopener noreferrer" : undefined}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
           {!stealthMode && (
             <a
               href="#admin"
@@ -608,8 +624,8 @@ export default function App() {
 
                 <div className="film-position">
                   {isFilm
-                    ? "FEATURED / SCROLL TO EXPLORE"
-                    : slide.badgeTopLeft || "FEATURED PROJECT"}
+                    ? "Lighthouse"
+                    : slide.badgeTopLeft || "Lighthouse"}
                 </div>
 
                 {isFilm ? (
@@ -814,9 +830,6 @@ export default function App() {
                 </div>
               </a>
             ))}
-          </div>
-          <div className="promo-note">
-            FEATURED LINK — 이미지·문구·링크는 임시 시안입니다. 현재 클릭 시 문의 이메일로 연결됩니다.
           </div>
         </section>
 

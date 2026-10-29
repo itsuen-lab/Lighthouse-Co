@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Film, SiteContent, PromoCard } from "../data/content.ts";
+import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS } from "../data/content.ts";
 import {
   Film as FilmIcon,
   Quote,
@@ -20,6 +20,8 @@ import {
   LogOut,
   ArrowUp,
   ArrowDown,
+  Compass,
+  Link2,
 } from "lucide-react";
 
 interface AdminPanelProps {
@@ -45,7 +47,7 @@ function getYouTubeVideoId(url?: string): string | null {
   return match ? match[1] : null;
 }
 
-type TabType = "films" | "featured" | "director" | "about" | "promo" | "contact" | "security" | "export";
+type TabType = "films" | "featured" | "navigation" | "director" | "about" | "promo" | "contact" | "security" | "export";
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   content,
@@ -90,6 +92,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           },
         ];
       }
+    }
+    if (!Array.isArray(copy.navItems) || copy.navItems.length === 0) {
+      copy.navItems = DEFAULT_NAV_ITEMS;
     }
     return copy;
   });
@@ -162,15 +167,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const isItemFeatured = (type: "film" | "promo", id: string) => {
+  const getHeroIndex = (type: "film" | "promo", id: string): number => {
     const targetPrefixed = `${type}:${id}`;
-    return data.featured.some(
+    return data.featured.findIndex(
       (fId) =>
         fId === targetPrefixed ||
         fId === id ||
         (type === "promo" && fId.startsWith("promo:") && fId.replace("promo:", "") === id) ||
         (type === "film" && (fId === id || fId.replace("film:", "") === id))
     );
+  };
+
+  const isItemFeatured = (type: "film" | "promo", id: string) => {
+    return getHeroIndex(type, id) !== -1;
+  };
+
+  const handleSetFeaturedPosition = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= data.featured.length) return;
+    setData((prev) => {
+      const list = [...prev.featured];
+      const [moved] = list.splice(fromIndex, 1);
+      list.splice(toIndex, 0, moved);
+      return { ...prev, featured: list };
+    });
+    showToast(`메인 Hero 노출 순서가 ${toIndex + 1}번째로 변경되었습니다.`);
   };
 
   const toggleFeaturedItem = (type: "film" | "promo", id: string) => {
@@ -211,6 +231,82 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       list[targetIndex] = temp;
       return { ...prev, featured: list };
     });
+  };
+
+  // Main Navigation Menu Handlers
+  const handleAddNavItem = (preset?: { label: string; url: string; targetBlank?: boolean }) => {
+    const newId = "nav-" + Date.now().toString(36);
+    const url = preset?.url || "https://";
+    const newItem: NavItem = {
+      id: newId,
+      label: preset?.label || "NEW MENU",
+      url,
+      isExternal: !url.startsWith("#"),
+      targetBlank: preset?.targetBlank ?? !url.startsWith("#"),
+      visible: true,
+    };
+    setData((prev) => ({
+      ...prev,
+      navItems: [...(prev.navItems || DEFAULT_NAV_ITEMS), newItem],
+    }));
+    showToast("새 메인 메뉴가 추가되었습니다.");
+  };
+
+  const handleUpdateNavItem = (id: string, field: keyof NavItem, value: any) => {
+    setData((prev) => ({
+      ...prev,
+      navItems: (prev.navItems || DEFAULT_NAV_ITEMS).map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === "url" && typeof value === "string") {
+            const isExt = !value.startsWith("#");
+            updated.isExternal = isExt;
+            if (isExt && updated.targetBlank === undefined) {
+              updated.targetBlank = true;
+            }
+          }
+          return updated;
+        }
+        return item;
+      }),
+    }));
+  };
+
+  const handleMoveNavItem = (index: number, direction: "up" | "down") => {
+    setData((prev) => {
+      const list = [...(prev.navItems || DEFAULT_NAV_ITEMS)];
+      const targetIdx = direction === "up" ? index - 1 : index + 1;
+      if (targetIdx < 0 || targetIdx >= list.length) return prev;
+      const temp = list[index];
+      list[index] = list[targetIdx];
+      list[targetIdx] = temp;
+      return { ...prev, navItems: list };
+    });
+  };
+
+  const handleDeleteNavItem = (id: string) => {
+    const list = data.navItems || DEFAULT_NAV_ITEMS;
+    if (list.length <= 1) {
+      alert("메인 메뉴는 최소 1개 이상 유지되어야 합니다.");
+      return;
+    }
+    if (confirm("정말 이 메뉴 항목을 삭제하시겠습니까?")) {
+      setData((prev) => ({
+        ...prev,
+        navItems: (prev.navItems || DEFAULT_NAV_ITEMS).filter((item) => item.id !== id),
+      }));
+      showToast("메뉴 항목이 삭제되었습니다.");
+    }
+  };
+
+  const handleResetNavItems = () => {
+    if (confirm("메인 메뉴를 초기 기본 메뉴(PROGRAMS, ABOUT, CONTACT)로 되돌리시겠습니까?")) {
+      setData((prev) => ({
+        ...prev,
+        navItems: DEFAULT_NAV_ITEMS,
+      }));
+      showToast("메인 메뉴가 기본값으로 복원되었습니다.");
+    }
   };
 
   const handleRemoveFeatured = (index: number) => {
@@ -543,6 +639,28 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
 
           <button
             type="button"
+            onClick={() => setActiveTab("navigation")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px 24px",
+              background: activeTab === "navigation" ? "#1e1e1e" : "transparent",
+              border: 0,
+              borderLeft: activeTab === "navigation" ? "3px solid #fff" : "3px solid transparent",
+              color: activeTab === "navigation" ? "#fff" : "#888",
+              fontSize: "13px",
+              fontWeight: 600,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            <Compass size={16} />
+            <span>메인 메뉴 & 외부 링크 ({(data.navItems || DEFAULT_NAV_ITEMS).length})</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("director")}
             style={{
               display: "flex",
@@ -808,24 +926,30 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {film.titleKo || "한글 제목 없음"} · {film.year}
                             </span>
-                            {isFeatured && (
-                              <span
-                                title="메인 추천작(Hero)에 포함됨"
-                                style={{
-                                  fontSize: "9px",
-                                  fontWeight: 800,
-                                  letterSpacing: "0.1em",
-                                  color: "#f59e0b",
-                                  background: "rgba(245, 158, 11, 0.15)",
-                                  padding: "1px 5px",
-                                  borderRadius: "2px",
-                                  whiteSpace: "nowrap",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                HERO
-                              </span>
-                            )}
+                            {(() => {
+                              const heroIdx = getHeroIndex("film", film.id);
+                              if (heroIdx >= 0) {
+                                return (
+                                  <span
+                                    title={`메인 Hero ${heroIdx + 1}순위 슬라이드로 노출`}
+                                    style={{
+                                      fontSize: "9px",
+                                      fontWeight: 800,
+                                      letterSpacing: "0.06em",
+                                      color: "#000",
+                                      background: "#f59e0b",
+                                      padding: "1px 6px",
+                                      borderRadius: "2px",
+                                      whiteSpace: "nowrap",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    HERO #{heroIdx + 1}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </div>
 
@@ -977,33 +1101,120 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                           );
                         })()}
 
-                        <button
-                          type="button"
-                          onClick={() => toggleFeaturedItem("film", currentFilm.id)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            background: isItemFeatured("film", currentFilm.id)
-                              ? "rgba(245, 158, 11, 0.2)"
-                              : "#1e1e1e",
-                            border: `1px solid ${
-                              isItemFeatured("film", currentFilm.id)
-                                ? "rgba(245, 158, 11, 0.6)"
-                                : "rgba(255,255,255,0.2)"
-                            }`,
-                            color: isItemFeatured("film", currentFilm.id) ? "#f59e0b" : "#ccc",
-                            padding: "7px 14px",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <Star size={13} />
-                          {isItemFeatured("film", currentFilm.id)
-                            ? "메인 Hero에서 제외"
-                            : "메인 Hero로 지정"}
-                        </button>
+                        {(() => {
+                          const heroIdx = getHeroIndex("film", currentFilm.id);
+                          if (heroIdx >= 0) {
+                            return (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  background: "rgba(245, 158, 11, 0.15)",
+                                  border: "1px solid rgba(245, 158, 11, 0.5)",
+                                  padding: "3px 8px",
+                                }}
+                              >
+                                <span style={{ fontSize: "11px", fontWeight: 800, color: "#f59e0b", display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <Star size={12} fill="#f59e0b" />
+                                  Hero 순서:
+                                </span>
+                                <select
+                                  value={heroIdx}
+                                  onChange={(e) => handleSetFeaturedPosition(heroIdx, Number(e.target.value))}
+                                  style={{
+                                    background: "#0a0a0a",
+                                    border: "1px solid rgba(245, 158, 11, 0.6)",
+                                    color: "#f59e0b",
+                                    padding: "4px 8px",
+                                    fontSize: "11px",
+                                    fontWeight: 800,
+                                    cursor: "pointer",
+                                  }}
+                                  title="메인 Hero 노출 순서 직접 지정"
+                                >
+                                  {data.featured.map((_, pIdx) => (
+                                    <option key={pIdx} value={pIdx}>
+                                      {pIdx + 1}순위 {pIdx === 0 ? "(첫 메인)" : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  disabled={heroIdx === 0}
+                                  onClick={() => handleMoveFeatured(heroIdx, "up")}
+                                  style={{
+                                    background: "transparent",
+                                    border: 0,
+                                    color: heroIdx === 0 ? "#444" : "#fff",
+                                    cursor: heroIdx === 0 ? "default" : "pointer",
+                                    padding: "3px 4px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                  title="Hero 순서 위로 1칸"
+                                >
+                                  <ArrowUp size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={heroIdx === data.featured.length - 1}
+                                  onClick={() => handleMoveFeatured(heroIdx, "down")}
+                                  style={{
+                                    background: "transparent",
+                                    border: 0,
+                                    color: heroIdx === data.featured.length - 1 ? "#444" : "#fff",
+                                    cursor: heroIdx === data.featured.length - 1 ? "default" : "pointer",
+                                    padding: "3px 4px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                  }}
+                                  title="Hero 순서 아래로 1칸"
+                                >
+                                  <ArrowDown size={12} />
+                                </button>
+                                <div style={{ width: "1px", height: "14px", background: "rgba(245, 158, 11, 0.3)" }} />
+                                <button
+                                  type="button"
+                                  onClick={() => toggleFeaturedItem("film", currentFilm.id)}
+                                  style={{
+                                    background: "transparent",
+                                    border: 0,
+                                    color: "#ef4444",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    padding: "3px 6px",
+                                  }}
+                                  title="메인 Hero에서 제외"
+                                >
+                                  Hero 제외
+                                </button>
+                              </div>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => toggleFeaturedItem("film", currentFilm.id)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                background: "#1e1e1e",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#ccc",
+                                padding: "7px 14px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              <Star size={13} />
+                              메인 Hero로 지정
+                            </button>
+                          );
+                        })()}
 
                         <button
                           type="button"
@@ -1373,50 +1584,89 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         gap: "14px",
                       }}
                     >
-                      {/* Order Up/Down buttons */}
+                      {/* Slot Order Selector & Up/Down */}
                       <div
                         style={{
                           display: "flex",
-                          flexDirection: "column",
-                          gap: "3px",
                           alignItems: "center",
+                          gap: "8px",
                           flexShrink: 0,
                         }}
                       >
-                        <button
-                          type="button"
-                          disabled={slotIndex === 0}
-                          onClick={() => handleMoveFeatured(slotIndex, "up")}
+                        <div
                           style={{
-                            background: "transparent",
-                            border: 0,
-                            color: slotIndex === 0 ? "#333" : "#aaa",
-                            cursor: slotIndex === 0 ? "default" : "pointer",
-                            padding: "3px 4px",
                             display: "flex",
+                            flexDirection: "column",
+                            gap: "2px",
                             alignItems: "center",
                           }}
-                          title="위로 1칸 이동"
                         >
-                          <ArrowUp size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={slotIndex === data.featured.length - 1}
-                          onClick={() => handleMoveFeatured(slotIndex, "down")}
+                          <span style={{ fontSize: "9px", color: "#888", fontWeight: 700 }}>순서</span>
+                          <select
+                            value={slotIndex}
+                            onChange={(e) => handleSetFeaturedPosition(slotIndex, Number(e.target.value))}
+                            style={{
+                              background: "#080808",
+                              border: "1px solid rgba(245, 158, 11, 0.6)",
+                              color: "#f59e0b",
+                              padding: "4px 6px",
+                              fontSize: "11px",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                            title="Hero 노출 순서 직접 지정"
+                          >
+                            {data.featured.map((_, pIdx) => (
+                              <option key={pIdx} value={pIdx}>
+                                {pIdx + 1}순위 {pIdx === 0 ? "★첫화면" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div
                           style={{
-                            background: "transparent",
-                            border: 0,
-                            color: slotIndex === data.featured.length - 1 ? "#333" : "#aaa",
-                            cursor: slotIndex === data.featured.length - 1 ? "default" : "pointer",
-                            padding: "3px 4px",
                             display: "flex",
+                            flexDirection: "column",
+                            gap: "2px",
                             alignItems: "center",
                           }}
-                          title="아래로 1칸 이동"
                         >
-                          <ArrowDown size={14} />
-                        </button>
+                          <button
+                            type="button"
+                            disabled={slotIndex === 0}
+                            onClick={() => handleMoveFeatured(slotIndex, "up")}
+                            style={{
+                              background: "transparent",
+                              border: 0,
+                              color: slotIndex === 0 ? "#333" : "#aaa",
+                              cursor: slotIndex === 0 ? "default" : "pointer",
+                              padding: "2px 4px",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                            title="위로 1칸 이동"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={slotIndex === data.featured.length - 1}
+                            onClick={() => handleMoveFeatured(slotIndex, "down")}
+                            style={{
+                              background: "transparent",
+                              border: 0,
+                              color: slotIndex === data.featured.length - 1 ? "#333" : "#aaa",
+                              cursor: slotIndex === data.featured.length - 1 ? "default" : "pointer",
+                              padding: "2px 4px",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                            title="아래로 1칸 이동"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Slot Number Badge */}
@@ -1538,6 +1788,439 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         title="이 슬라이드를 메인 Hero에서 제외"
                       >
                         <Trash2 size={13} /> 삭제
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: NAVIGATION MENU & EXTERNAL LINKS */}
+          {activeTab === "navigation" && (
+            <div style={{ maxWidth: "880px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "28px",
+                  gap: "20px",
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
+                    메인 메뉴 및 외부 링크 관리
+                  </h2>
+                  <p style={{ margin: 0, color: "#888", fontSize: "13px", lineHeight: "1.5" }}>
+                    상단 헤더에 노출되는 텍스트 메뉴를 추가하고, 클릭 시 연결될 외부 사이트 링크(네이버 스마트스토어, 인스타그램, 예매처 등) 또는 페이지 내 섹션 이동을 자유롭게 설정합니다.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={handleResetNavItems}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "transparent",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      color: "#aaa",
+                      padding: "10px 14px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                    title="기본 메뉴(PROGRAMS, ABOUT, CONTACT)로 복원"
+                  >
+                    <RotateCcw size={14} /> 기본값 복원
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddNavItem()}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      background: "#f1f1ee",
+                      border: "1px solid #fff",
+                      color: "#000",
+                      padding: "10px 18px",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      letterSpacing: "0.06em",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Plus size={16} /> 새 메뉴 추가
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Presets Toolbar */}
+              <div
+                style={{
+                  background: "#101010",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "14px 18px",
+                  marginBottom: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span style={{ fontSize: "11px", color: "#888", fontWeight: 700, marginRight: "4px" }}>
+                  빠른 외부 링크 추가 프리셋:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleAddNavItem({ label: "STORE", url: "https://smartstore.naver.com/", targetBlank: true })}
+                  style={{
+                    background: "#1c1c1c",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Plus size={12} /> + 네이버 스마트스토어 (STORE)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddNavItem({ label: "INSTAGRAM", url: "https://instagram.com/", targetBlank: true })}
+                  style={{
+                    background: "#1c1c1c",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Plus size={12} /> + 인스타그램 (INSTAGRAM)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddNavItem({ label: "TICKETS", url: "https://", targetBlank: true })}
+                  style={{
+                    background: "#1c1c1c",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Plus size={12} /> + 예매처 링크 (TICKETS)
+                </button>
+              </div>
+
+              {/* Live Preview Box */}
+              <div
+                style={{
+                  background: "#0a0a0a",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  padding: "16px 20px",
+                  marginBottom: "24px",
+                }}
+              >
+                <div style={{ fontSize: "10px", color: "#777", fontWeight: 700, letterSpacing: "0.1em", marginBottom: "12px" }}>
+                  헤더 메뉴 실시간 미리보기 (LIVE PREVIEW)
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 18px",
+                    background: "#000",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 900, letterSpacing: "0.15em", color: "#fff" }}>LIGHTHOUSE</span>
+                    <span style={{ fontSize: "9px", color: "#888", letterSpacing: "0.1em" }}>SEOUL · KOREA</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+                    {(data.navItems || DEFAULT_NAV_ITEMS)
+                      .filter((item) => item.visible !== false)
+                      .map((item) => {
+                        const isExt = !item.url.startsWith("#");
+                        return (
+                          <span
+                            key={item.id}
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 800,
+                              letterSpacing: "0.12em",
+                              color: isExt ? "#60a5fa" : "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "3px",
+                            }}
+                          >
+                            {item.label}
+                            {isExt && <span style={{ fontSize: "10px", opacity: 0.7 }}>↗</span>}
+                          </span>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Nav Items List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {(data.navItems || DEFAULT_NAV_ITEMS).map((item, index) => {
+                  const isExternal = !item.url.startsWith("#");
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        background: item.visible === false ? "#0c0c0c" : "#121212",
+                        border: `1px solid ${item.visible === false ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.12)"}`,
+                        opacity: item.visible === false ? 0.6 : 1,
+                        padding: "16px 20px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "14px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {/* Order Up / Down */}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "2px",
+                          alignItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => handleMoveNavItem(index, "up")}
+                          style={{
+                            background: "transparent",
+                            border: 0,
+                            color: index === 0 ? "#333" : "#aaa",
+                            cursor: index === 0 ? "default" : "pointer",
+                            padding: "2px 4px",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          title="위로 1칸 이동"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === (data.navItems || DEFAULT_NAV_ITEMS).length - 1}
+                          onClick={() => handleMoveNavItem(index, "down")}
+                          style={{
+                            background: "transparent",
+                            border: 0,
+                            color: index === (data.navItems || DEFAULT_NAV_ITEMS).length - 1 ? "#333" : "#aaa",
+                            cursor: index === (data.navItems || DEFAULT_NAV_ITEMS).length - 1 ? "default" : "pointer",
+                            padding: "2px 4px",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          title="아래로 1칸 이동"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                      </div>
+
+                      {/* Number Badge */}
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontFamily: "monospace",
+                          color: "#888",
+                          fontWeight: 700,
+                          width: "28px",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {index + 1 < 10 ? `0${index + 1}` : index + 1}
+                      </span>
+
+                      {/* Type Badge */}
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 800,
+                          padding: "3px 8px",
+                          borderRadius: "2px",
+                          flexShrink: 0,
+                          background: isExternal ? "rgba(96, 165, 250, 0.15)" : "rgba(255, 255, 255, 0.1)",
+                          color: isExternal ? "#60a5fa" : "#ccc",
+                          border: `1px solid ${isExternal ? "rgba(96, 165, 250, 0.4)" : "rgba(255, 255, 255, 0.15)"}`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        {isExternal ? (
+                          <>
+                            <ExternalLink size={10} /> 외부 링크
+                          </>
+                        ) : (
+                          <>
+                            <Link2 size={10} /> 내부 섹션
+                          </>
+                        )}
+                      </span>
+
+                      {/* Label Input */}
+                      <div style={{ width: "160px", flexShrink: 0 }}>
+                        <label style={{ display: "block", fontSize: "10px", color: "#888", marginBottom: "4px" }}>
+                          메뉴 표시 텍스트
+                        </label>
+                        <input
+                          type="text"
+                          value={item.label}
+                          onChange={(e) => handleUpdateNavItem(item.id, "label", e.target.value)}
+                          placeholder="예: STORE"
+                          style={{
+                            width: "100%",
+                            background: "#080808",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            color: "#fff",
+                            padding: "8px 10px",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+
+                      {/* URL Input */}
+                      <div style={{ flex: 1, minWidth: "220px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                          <label style={{ fontSize: "10px", color: "#888" }}>
+                            연결 대상 URL 또는 #섹션
+                          </label>
+                          {isExternal && (
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                fontSize: "10px",
+                                color: "#60a5fa",
+                                textDecoration: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "2px",
+                              }}
+                            >
+                              링크 테스트 ↗
+                            </a>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={item.url}
+                          onChange={(e) => handleUpdateNavItem(item.id, "url", e.target.value)}
+                          placeholder="https://... 또는 #programs"
+                          style={{
+                            width: "100%",
+                            background: "#080808",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            color: "#fff",
+                            padding: "8px 10px",
+                            fontSize: "12px",
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+
+                      {/* Open in new tab checkbox */}
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "11px",
+                          color: "#aaa",
+                          cursor: "pointer",
+                          userSelect: "none",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={item.targetBlank !== false}
+                          onChange={(e) => handleUpdateNavItem(item.id, "targetBlank", e.target.checked)}
+                          style={{ accentColor: "#60a5fa" }}
+                        />
+                        새 창으로 열기
+                      </label>
+
+                      {/* Visibility toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateNavItem(item.id, "visible", item.visible === false ? true : false)}
+                        style={{
+                          background: item.visible === false ? "rgba(255,255,255,0.05)" : "rgba(34, 197, 94, 0.15)",
+                          border: `1px solid ${item.visible === false ? "rgba(255,255,255,0.15)" : "rgba(34, 197, 94, 0.4)"}`,
+                          color: item.visible === false ? "#777" : "#86efac",
+                          padding: "6px 10px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          flexShrink: 0,
+                        }}
+                        title={item.visible === false ? "메뉴 숨김 상태 (클릭 시 노출)" : "메뉴 노출 상태 (클릭 시 숨김)"}
+                      >
+                        <Eye size={12} />
+                        {item.visible === false ? "숨김" : "노출"}
+                      </button>
+
+                      {/* Delete Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNavItem(item.id)}
+                        style={{
+                          background: "rgba(239, 68, 68, 0.12)",
+                          border: "1px solid rgba(239, 68, 68, 0.3)",
+                          color: "#ef4444",
+                          padding: "6px 10px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          flexShrink: 0,
+                        }}
+                        title="메뉴 삭제"
+                      >
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   );

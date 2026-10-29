@@ -27,7 +27,17 @@ export interface PromoCard {
   image: string;
 }
 
+export interface NavItem {
+  id: string;
+  label: string;
+  url: string;
+  isExternal?: boolean;
+  targetBlank?: boolean;
+  visible?: boolean;
+}
+
 export interface SiteContent {
+  navItems?: NavItem[];
   featured: string[];
   films: Film[];
   director: {
@@ -44,7 +54,14 @@ export interface SiteContent {
   promos: PromoCard[];
 }
 
+export const DEFAULT_NAV_ITEMS: NavItem[] = [
+  { id: "nav-programs", label: "PROGRAMS", url: "#programs", isExternal: false, targetBlank: false, visible: true },
+  { id: "nav-about", label: "ABOUT", url: "#about", isExternal: false, targetBlank: false, visible: true },
+  { id: "nav-contact", label: "CONTACT", url: "#contact", isExternal: false, targetBlank: false, visible: true },
+];
+
 export const INITIAL_CONTENT: SiteContent = {
+  navItems: DEFAULT_NAV_ITEMS,
   featured: ["celine", "eureka", "contempt"],
   films: [
     {
