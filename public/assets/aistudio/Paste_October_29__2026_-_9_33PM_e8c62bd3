@@ -1,0 +1,528 @@
+<!doctype html>
+<!DOCTYPE html>
+
+<html lang="ko"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>LIGHTHOUSE — Independent Cinema</title>
+<style>
+.contact-links{border-top:1px solid rgba(255,255,255,.32);max-width:1000px}
+.contact-links>a{display:grid;grid-template-columns:minmax(0,1fr) 35px;gap:16px;align-items:center;padding:26px 0;border-bottom:1px solid rgba(255,255,255,.32);font-size:clamp(18px,2.2vw,34px);font-weight:400;text-decoration:none;color:inherit;transition:opacity .2s ease}
+.contact-links>a:hover{opacity:.57}
+.contact-links .contact-label{font-size:10px;font-weight:700;letter-spacing:.13em;color:#aaa}
+.contact-links .contact-arrow{text-align:right;font-size:24px}
+@media(max-width:650px){.contact-links>a{grid-template-columns:1fr 26px;gap:8px;padding:20px 0;font-size:19px}.contact-links .contact-label{grid-column:1 / -1}}
+</style>
+<style>
+/* v14 About bilingual stacked layout: Korean first, English below */
+.about-bilingual{display:grid;grid-template-columns:1fr;gap:clamp(36px,5vw,70px);max-width:1120px;align-items:start}
+.about-bilingual .about-ko p{font-size:clamp(17px,1.65vw,25px);line-height:0.7;font-weight:400;letter-spacing:-.038em;word-break:keep-all;max-width:none;margin:0 0 .72em}
+.about-bilingual .about-en p{font-family:"Helvetica Neue",Arial,sans-serif;font-size:clamp(17px,1.55vw,23px);line-height:1.63;font-weight:400;letter-spacing:-.018em;max-width:none;margin:0}
+@media(max-width:800px){.about-bilingual{grid-template-columns:1fr;gap:32px}.about-bilingual .about-ko p{font-size:18px}.about-bilingual .about-en p{font-size:17px}}
+</style><style>
+/* v16: unify interactive text hover with CONTACT's gentle fade */
+.nav a, .film-row .title {text-decoration:none!important;transition:opacity .2s ease}
+.nav a:hover,.nav a:focus-visible {text-decoration:none!important;opacity:.57}
+.film-row:hover .title,.film-row:focus-within .title {text-decoration:none!important;opacity:.57}
+.intro h1{font-weight:400;letter-spacing:-.055em;line-height:1.03;font-size:clamp(50px,7.5vw,126px)}
+.intro .sub{font-size:clamp(17px,1.8vw,27px);font-weight:400;color:#cececa;letter-spacing:-.035em}
+</style><style>
+/* v17: editable featured link below About */
+.promo-section{padding:0 var(--pad) 115px;background:var(--bg);position:relative;z-index:4}
+.promo-card{display:flex;position:relative;isolation:isolate;height:clamp(510px,68vw,820px);padding:clamp(26px,4vw,64px);overflow:hidden;flex-direction:column;justify-content:space-between;background:#222;color:#fff}
+.promo-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.promo-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.46),transparent 30%,transparent 40%,rgba(0,0,0,.82))}
+.promo-card:hover .promo-photo{transform:scale(1.035)}
+.promo-header{display:flex;justify-content:space-between;gap:15px;font-size:11px;letter-spacing:.13em;font-weight:700}
+.promo-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:28px}
+.promo-kicker{font-size:11px;letter-spacing:.13em;font-weight:700}
+.promo-copy h2{font-family:Arial,'Helvetica Neue',sans-serif;font-size:clamp(56px,8vw,132px);font-weight:400;letter-spacing:-.065em;line-height:.98;margin:20px 0}
+.promo-copy p{font-size:clamp(16px,1.8vw,23px);margin:0;letter-spacing:-.025em}
+.promo-cta{font-size:11px;font-weight:750;letter-spacing:.1em;border:1px solid rgba(255,255,255,.82);padding:17px 20px;white-space:nowrap;transition:background .2s,color .2s}
+.promo-card:hover .promo-cta,.promo-card:focus-visible .promo-cta{background:white;color:#111}
+.promo-note{margin-top:14px;color:#a3a3a0;font-size:10px;letter-spacing:.02em}
+@media(max-width:750px){.promo-section{padding-bottom:70px}.promo-card{height:72svh;min-height:480px;padding:24px}.promo-header{font-size:9px}.promo-header span:last-child{display:none}.promo-bottom{display:block}.promo-copy h2{font-size:clamp(45px,11vw,76px)}.promo-cta{display:inline-block;margin-top:26px}.promo-note{font-size:9px;line-height:1.5}}
+</style>
+<style id="lh-v21-motion">
+/* v21 Motion Concept — preserve v20 layout, type, navigation and content */
+.features .feature { --curtain-cut: 0%; --curtain-shade: 0; clip-path: inset(0 0 var(--curtain-cut) 0); }
+.features .feature::before { content:""; position:absolute; inset:0; z-index:1; background:#040404; opacity:var(--curtain-shade,0); pointer-events:none; }
+.features .feature .bg, .features .feature:hover .bg {
+  transform: translate3d(0,var(--shift,0px),0) scale(var(--zoom,1.025));
+  transform-origin:50% 50%;
+  transition:none;
+}
+.features .feature .feature-bottom { z-index:3; }
+.features .feature .film-position, .features .feature .feature-scroll-hint { pointer-events:none; }
+.feature-image-link {position:absolute!important;inset:0;z-index:2!important;cursor:pointer;display:block;}
+.feature-image-link:focus-visible {outline:3px solid #fff;outline-offset:-9px;}
+@media (prefers-reduced-motion:reduce) {
+ .features .feature {clip-path:none!important;}
+ .features .feature::before{display:none!important;}
+ .features .feature .bg {transform:none!important;}
+}
+</style>
+<style>/* v24 — inline Korean release dates */
+.features .feature .feature-name-ko{display:flex;align-items:baseline;gap:clamp(12px,1.7vw,25px);flex-wrap:wrap}
+.features .feature .feature-release-inline{font-family:Arial,"Helvetica Neue",sans-serif;font-size:clamp(11px,1.02vw,15px);font-weight:500;letter-spacing:.065em;white-space:nowrap;color:rgba(255,255,255,.85)}
+@media(max-width:750px){.features .feature .feature-name-ko{gap:9px}.features .feature .feature-release-inline{font-size:11px}}
+
+/* v26: align Korean title with English title left edge */
+.feature-bottom > div{display:flex;flex-direction:column;align-items:flex-start}
+.feature-name,.feature-name-ko{display:block;margin-left:0;padding-left:0;text-align:left}
+.feature-name-ko{display:flex;align-items:baseline;justify-content:flex-start;gap:14px;width:fit-content;max-width:100%}
+.feature-release-inline{display:inline-block;vertical-align:baseline;flex:0 0 auto}
+@media (max-width: 900px){.feature-name-ko{gap:10px;flex-wrap:wrap}}
+
+/* v33: director comment as large cinematic image section */
+.director-note{background:#fff;color:#101010;padding:clamp(34px,4vw,56px) var(--pad) clamp(72px,8vw,110px);position:relative;z-index:4}
+.director-note__grid{display:block}
+.director-note__portrait{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#c8c7c2;min-height:540px;border:0}
+.director-note__portrait:before{content:'';position:absolute;inset:0;background:
+ linear-gradient(180deg,rgba(0,0,0,.06) 0%, rgba(0,0,0,.18) 44%, rgba(0,0,0,.58) 100%),
+ radial-gradient(ellipse 21% 26% at 52% 27%, rgba(128,127,121,.96) 0 80%, transparent 81%),
+ radial-gradient(ellipse 42% 58% at 50% 81%, rgba(119,118,112,.92) 0 44%, transparent 45%),
+ linear-gradient(135deg,#edece8,#b6b3ad);filter:grayscale(1)}
+.director-note__content{position:absolute;left:clamp(24px,3vw,40px);right:clamp(24px,3vw,40px);bottom:clamp(26px,3vw,38px);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;z-index:2}
+.director-note__name{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:clamp(13px,1vw,16px);font-weight:600;letter-spacing:-.03em;color:rgba(255,255,255,.9);margin:0 0 clamp(14px,1.6vw,22px)}
+.director-note__quote-ko{font-family:'Noto Serif KR','Nanum Myeongjo','AppleMyungjo',serif;font-weight:400;font-size:clamp(30px,3.15vw,52px);line-height:1.42;letter-spacing:-.065em;word-break:keep-all;overflow-wrap:break-word;max-width:min(760px,78%);margin:0;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.28)}
+@media(max-width:900px){.director-note{padding:22px var(--pad) 72px}.director-note__portrait{aspect-ratio:5/6;min-height:0}.director-note__content{left:20px;right:20px;bottom:22px}.director-note__quote-ko{max-width:100%;font-size:clamp(24px,7.2vw,34px);line-height:1.38}.director-note__name{margin-bottom:12px}}
+
+/* v35 — centered Korean quote, no director attribution */
+.director-note__content{position:absolute!important;inset:0!important;width:100%;height:100%;padding:clamp(30px,6vw,96px);display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;pointer-events:none}
+.director-note__quote-ko{max-width:950px!important;margin:0 auto!important;text-align:center;font-size:clamp(30px,3.7vw,62px);line-height:1.5;letter-spacing:-.06em;text-wrap:balance}
+.director-note__quote-ko::before{content:'“'}
+.director-note__quote-ko::after{content:'”'}
+@media(max-width:750px){.director-note__content{inset:0!important;padding:28px!important}.director-note__quote-ko{font-size:clamp(25px,6.9vw,39px);line-height:1.5}}
+
+/* v36: director quote aligned to bottom */
+.director-note__content{top:auto !important; bottom:clamp(28px,3.8vw,48px) !important; left:clamp(28px,3.8vw,52px) !important; right:clamp(28px,3.8vw,52px) !important; transform:none !important; display:flex !important; align-items:center !important; justify-content:flex-end !important; min-height:auto !important;}
+.director-note__quote-ko{max-width:min(980px,86%) !important; text-align:center !important; margin:0 auto !important;}
+@media(max-width:900px){.director-note__content{left:20px !important; right:20px !important; bottom:22px !important;}.director-note__quote-ko{max-width:100% !important;}}
+</style><link href="style.css" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500&amp;display=swap" rel="stylesheet"/></head><body>
+<header class="float"><a aria-label="LIGHTHOUSE home" class="identity" href="#home"><img alt="LIGHTHOUSE" class="logo" src="images/lighthouse-logo.png"/><span class="location">SEOUL · KOREA</span></a><nav class="nav"><a href="#programs">PROGRAMS</a><a href="#about">ABOUT</a><a href="#contact">CONTACT</a></nav></header>
+<main id="site"><section aria-label="Featured films" class="features" id="home"><section class="feature"><img alt="" class="bg" data-fallback="images/hero-fallback-1.jpg" loading="eager" src="https://cdn.i-scmp.com/sites/default/files/styles/1020x680/public/images/methode/2017/08/17/ae0c4f96-7ccc-11e7-83c9-6be3df13972a_1280x720_105429.jpg?itok=Hxf65raV"/><div class="film-position">FEATURED / SCROLL TO EXPLORE</div><div class="feature-bottom"><div><div class="feature-name">Céline and Julie Go Boating</div><div class="feature-name-ko">셀린느와 줄리 배 타러 가다<span class="feature-release-inline">2026.09.30</span></div></div><a class="feature-link" href="#film-celine">EXPLORE FILM ↗</a></div></section><section class="feature"><img alt="" class="bg" data-fallback="images/hero-fallback-2.jpg" loading="eager" src="https://www.koreafilm.or.kr/upload/programMovieManage/202209/046a2299-cb79-4f3d-88f8-55b6de9d00b9.jpg"/><div class="film-position">FEATURED / SCROLL TO EXPLORE</div><div class="feature-bottom"><div><div class="feature-name">Eureka</div><div class="feature-name-ko">유레카<span class="feature-release-inline">2026.05.27</span></div></div><a class="feature-link" href="#film-eureka">EXPLORE FILM ↗</a></div></section><section class="feature"><img alt="" class="bg" data-fallback="images/hero-fallback-3.jpg" loading="eager" src="https://assets.eyefilm.nl/images/production/_2560x1440_crop_center-center_none/still_Le-M%C3%A9pris-Jean-Luc-Godard-FR-1963-1.jpg"/><div class="film-position">FEATURED / SCROLL TO EXPLORE</div><div class="feature-bottom"><div><div class="feature-name">Contempt</div><div class="feature-name-ko">경멸<span class="feature-release-inline">2026.07.15</span></div></div><a class="feature-link" href="#film-contempt">EXPLORE FILM ↗</a></div></section></section><section class="programs" id="programs"><div class="section-top"><h2>PROGRAMS.</h2><small>EXPLORE OUR FILMS ↘</small></div><div id="film-list"><a class="film-row" data-key="celine" href="#film-celine"><span class="title-wrap"><span class="title">Céline and Julie Go Boating</span><span class="title-ko">셀린느와 줄리 배 타러 가다</span></span><span class="info">JACQUES RIVETTE · 1974 ↗</span></a><a class="film-row" data-key="eureka" href="#film-eureka"><span class="title-wrap"><span class="title">Eureka</span><span class="title-ko">유레카</span></span><span class="info">SHINJI AOYAMA · 2000 ↗</span></a><a class="film-row" data-key="contempt" href="#film-contempt"><span class="title-wrap"><span class="title">Contempt</span><span class="title-ko">경멸</span></span><span class="info">JEAN-LUC GODARD · 1963 ↗</span></a><a class="film-row" data-key="wicker" href="#film-wicker"><span class="title-wrap"><span class="title">The Wicker Man</span><span class="title-ko">위커 맨</span></span><span class="info">ROBIN HARDY · 1973 ↗</span></a><a class="film-row" data-key="umbrella" href="#film-umbrella"><span class="title-wrap"><span class="title">The Umbrellas of Cherbourg</span><span class="title-ko">쉘부르의 우산</span></span><span class="info">JACQUES DEMY · 1964 ↗</span></a><a class="film-row" data-key="landscape" href="#film-landscape"><span class="title-wrap"><span class="title">Landscape in the Mist</span><span class="title-ko">안개 속의 풍경</span></span><span class="info">THEO ANGELOPOULOS · 1988 ↗</span></a><a class="film-row" data-key="remake" href="#film-remake"><span class="title-wrap"><span class="title">Remake</span><span class="title-ko">리메이크</span></span><span class="info">ROSS MCELWEE · 2025 ↗</span></a><a class="film-row" data-key="sherman" href="#film-sherman" style="display:none"><span class="title-wrap"><span class="title">Sherman's March</span><span class="title-ko">셔먼의 행진</span></span><span class="info">ROSS MCELWEE · 1986 ↗</span></a><a class="film-row" data-key="lola" href="#film-lola" style="display:none"><span class="title-wrap"><span class="title">Lola</span><span class="title-ko">롤라</span></span><span class="info">JACQUES DEMY · 1961 ↗</span></a></div><button class="programs-more" id="moreFilms" type="button">MORE ↓</button></section><section aria-label="Director comment" class="director-note" id="director-note">
+<div class="director-note__grid">
+<div aria-label="감독 사진 자리" class="director-note__portrait" role="img">
+<div class="director-note__content">
+<p class="director-note__quote-ko" lang="ko">감독의 코멘트를 이곳에 담습니다. 한 문장 한 문장이 오래 머무를 수 있도록.</p>
+</div>
+</div>
+</div>
+</section><section class="about" id="about"><h2>ABOUT.</h2><div class="about-bilingual">
+<div class="about-ko" lang="ko"><p>라이트하우스는 예술영화관 프로그래머에 의해 설립된 영화 수입/배급사입니다.</p><p>영화 프로그램의 맥락을 배급과 연결 시켜, 동시대 관객들에게 가장 유효한 영화를 선보입니다.</p><p>가장 영화적인 언어를 마케팅에 적용해 영화 산업의 저변을 확대하고, 새로운 경험을 발명합니다.</p></div>
+<div class="about-en" lang="en"><p>Lighthouse Co. is a Korean art-house film distributor founded on extensive experience in cinema programming and film festival planning. The team is led by former theater programmers and includes in-house design and marketing staff, as well as a studio capable of DCP production. We are committed to introducing each film with care, respecting both its context and the environment in which it is screened.</p></div>
+</div></section><section aria-label="Featured project" class="promo-section" id="feature-promo">
+<a aria-label="Lighthouse Store - inquire" class="promo-card" href="mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry">
+<img alt="Abstract monochrome beam of light, temporary campaign image" class="promo-photo" src="images/promo-example.jpg"/>
+<div class="promo-shade"></div>
+<div class="promo-header"><span>LIGHTHOUSE / FEATURED PROJECT</span><span>01 — SPECIAL PROJECT</span></div>
+<div class="promo-bottom">
+<div class="promo-copy"><span class="promo-kicker">EXPLORE BEYOND THE SCREEN</span><h2>Objects &amp;<br/>Moving Images.</h2><p>영화 밖에서 이어지는 새로운 경험</p></div>
+<span class="promo-cta">STORE / EXPLORE <span aria-hidden="true">↗</span></span>
+</div>
+</a>
+<div class="promo-note">FEATURED LINK — 이미지·문구·링크는 임시 시안입니다. 현재 클릭 시 문의 이메일로 연결됩니다.</div>
+</section><section class="contact" id="contact"><h2>CONTACT.</h2>
+<div class="contact-links">
+<a href="mailto:keeper@lighthouse.re.kr"><span>keeper@lighthouse.re.kr</span><span class="contact-arrow">↗</span></a><a href="https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg" rel="noopener noreferrer" target="_blank"><span>YouTube</span><span class="contact-arrow">↗</span></a><a href="https://www.instagram.com/filmlighthouse" rel="noopener noreferrer" target="_blank"><span>Instagram</span><span class="contact-arrow">↗</span></a><a href="https://x.com/filmxlighthouse" rel="noopener noreferrer" target="_blank"><span>X</span><span class="contact-arrow">↗</span></a></div>
+</section></main><article aria-live="polite" class="detail" id="detail"></article><div aria-hidden="true" class="hover-poster" id="hoverPoster"><img alt="" id="hoverImg"/></div>
+<script src="content.js"></script><script src="app.js"></script></body></html>
+
+==========================================================================================
+FILE: style.css  |  CSS
+==========================================================================================
+
+
+:root{--bg:#0b0b0b;--fg:#f1f1ee;--muted:#b8b8b5;--pad:clamp(22px,3.3vw,52px)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--fg);font-family:Arial,'Helvetica Neue','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased}button{font:inherit;color:inherit;cursor:pointer}a{color:inherit;text-decoration:none}img{display:block;width:100%;object-fit:cover}a:focus-visible,button:focus-visible{outline:2px solid white;outline-offset:4px}
+.float{position:fixed;z-index:50;top:27px;left:var(--pad);right:var(--pad);display:flex;justify-content:space-between;align-items:center;pointer-events:none}.identity,.nav{pointer-events:auto}.identity{display:flex;align-items:center;gap:17px}.logo{height:31px;width:auto;max-width:220px;object-fit:contain}.location{font-size:10px;letter-spacing:.16em;font-weight:700;color:#ddd;white-space:nowrap}.nav{display:flex;gap:30px}.nav a{font-size:11px;letter-spacing:.12em;font-weight:800}.nav a:hover{text-decoration:underline;text-underline-offset:6px}
+.intro{min-height:68vh;display:flex;flex-direction:column;justify-content:end;padding:180px var(--pad) 65px}.intro .eyebrow{font-size:11px;letter-spacing:.15em;font-weight:700;color:#aaa}.intro h1{font-weight:800;letter-spacing:-.085em;font-size:clamp(54px,9.2vw,164px);line-height:.85;margin:30px 0 20px}.intro .sub{font-size:clamp(16px,1.6vw,26px);font-weight:500;letter-spacing:-.03em}
+.features{padding:0 var(--pad) 100px}.feature{position:relative;min-height:clamp(510px,67vw,860px);margin:0 0 28px;background:#1c1b1b;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(22px,3.2vw,45px)}.feature .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s}.feature:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#05050555,transparent 35%,#000a);pointer-events:none}.feature:hover .bg{transform:scale(1.035)}.feature>*:not(.bg){position:relative;z-index:2}.feature-top{font-size:11px;font-weight:800;letter-spacing:.12em}.feature-bottom{display:flex;align-items:end;justify-content:space-between;gap:20px}.feature-name{font-size:clamp(50px,8.1vw,132px);font-weight:900;line-height:.85;letter-spacing:-.08em;text-transform:uppercase;max-width:1100px}.feature-meta{font-size:12px;margin-top:16px;font-weight:700;letter-spacing:.05em}.feature-link{border:1px solid #fffa;padding:13px 18px;font-weight:750;font-size:11px;letter-spacing:.12em;white-space:nowrap}.feature-link:hover{background:white;color:black}
+.programs{min-height:100vh;padding:130px var(--pad) 120px}.section-top{display:flex;justify-content:space-between;gap:20px;align-items:end;border-bottom:1px solid #777;padding-bottom:30px}.section-top h2{font-size:clamp(60px,10vw,150px);letter-spacing:-.09em;margin:0;line-height:.86}.section-top small{font-size:11px;letter-spacing:.11em;color:#bbb}.film-row{display:flex;gap:28px;justify-content:space-between;align-items:center;border-bottom:1px solid #555;padding:25px 0;position:relative}.film-row .title{font-size:clamp(32px,5.2vw,80px);font-weight:850;letter-spacing:-.07em;line-height:.95;text-transform:uppercase}.film-row .info{font-size:11px;color:#bbb;white-space:nowrap;font-weight:700}.film-row:hover .title{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:7px}.hover-poster{position:fixed;width:clamp(180px,21vw,330px);aspect-ratio:3/4;z-index:40;pointer-events:none;opacity:0;left:0;top:0;transform:translate3d(-50%,-50%,0) rotate(var(--r,-4deg)) scale(.94);transition:opacity .16s ease,transform .22s ease;box-shadow:0 30px 80px #000a;will-change:transform,left,top}.hover-poster.visible{opacity:1;transform:translate3d(-50%,-50%,0) rotate(var(--r,-4deg)) scale(1)}.hover-poster img{height:100%;border-radius:2px;display:block}
+.about,.contact{padding:110px var(--pad);min-height:65vh;border-top:1px solid #777}.about h2,.contact h2{font-size:clamp(65px,11vw,170px);letter-spacing:-.08em;margin:0 0 50px;line-height:.85}.about p,.contact p{font-size:clamp(20px,2.1vw,31px);max-width:760px;line-height:1.25}
+.detail{display:none;min-height:100vh;padding:130px var(--pad) 100px}.detail.active{display:block}.detail .back{font-size:12px;letter-spacing:.12em;cursor:pointer;background:transparent;border:0;padding:0 0 20px}.detail h1{font-size:clamp(52px,9vw,140px);line-height:.9;text-transform:uppercase;letter-spacing:-.075em;margin:24px 0}.detail .byline{font-size:13px;letter-spacing:.1em;margin-bottom:30px}.detail .still{width:100%;aspect-ratio:16/9;object-fit:cover}.detail .details{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-top:50px}.detail .details p{font-size:clamp(17px,2vw,29px);line-height:1.4;margin:0}.detail .details aside{font-size:13px;line-height:1.9;color:#ccc}.hidden{display:none!important}
+@media(max-width:750px){.float{top:16px;align-items:flex-start;gap:12px}.identity{display:block}.logo{height:22px;max-width:150px}.location{margin-top:10px;font-size:9px}.nav{gap:11px;flex-wrap:wrap;justify-content:flex-end}.nav a{font-size:9px}.intro{min-height:57vh;padding-top:140px}.feature{min-height:75vh;margin-bottom:14px}.feature-bottom{display:block}.feature-link{display:inline-block;margin-top:25px}.feature-name{font-size:clamp(43px,10vw,86px)}.section-top{display:block}.section-top small{display:block;margin-top:18px}.film-row{display:block}.film-row .info{display:block;margin-top:9px}.hover-poster{display:none}.detail .details{grid-template-columns:1fr;gap:25px}}
+
+/* V11 — cinematic overlapping sticky scenes */
+.intro{min-height:52vh;padding-bottom:58px}
+.features{padding:0;position:relative;isolation:isolate}
+.features .feature{position:sticky;top:0;width:100%;height:100svh;min-height:630px;margin:0;padding:clamp(30px,5vw,75px);transform:none;overflow:hidden;will-change:filter}
+.features .feature:nth-child(1){z-index:1}
+.features .feature:nth-child(2){z-index:2}
+.features .feature:nth-child(3){z-index:3}
+.features .feature .bg{transform:scale(var(--zoom,1.11)) translate3d(0,var(--shift,0px),0);transition:none;will-change:transform}
+.features .feature:hover .bg{transform:scale(var(--zoom,1.11)) translate3d(0,var(--shift,0px),0)}
+.features .feature:after{background:linear-gradient(180deg,rgba(0,0,0,.34),transparent 26%,transparent 45%,rgba(0,0,0,.78))}
+.features .feature .feature-top{font-size:12px;letter-spacing:.18em;align-self:flex-end;margin-top:70px}
+.features .feature .feature-bottom{transform:translateY(var(--text-shift,0px));opacity:var(--text-opacity,1);will-change:transform,opacity}
+.features .feature .feature-name{font-size:clamp(60px,9.6vw,170px);letter-spacing:-.08em;max-width:1200px}
+.features .feature .feature-link{border:1px solid rgba(255,255,255,.8);background:rgba(0,0,0,.08);backdrop-filter:blur(5px)}
+.features .feature .feature-link:hover{background:#fff;color:#111}
+.film-position{position:absolute!important;z-index:5!important;top:49%;right:var(--pad);writing-mode:vertical-rl;font-size:11px;letter-spacing:.22em;font-weight:700;color:#fff8;pointer-events:none}
+.feature-scroll-hint{position:absolute!important;z-index:5!important;bottom:clamp(25px,3vw,50px);right:var(--pad);font-size:10px;letter-spacing:.13em;font-weight:700;pointer-events:none}
+.features .feature .feature-bottom{padding-bottom:26px}
+.programs{position:relative;z-index:4;background:var(--bg)}
+@media(max-width:750px){.intro{min-height:48vh}.features .feature{height:88svh;min-height:520px;padding:24px}.features .feature .feature-top{margin-top:75px}.features .feature .feature-name{font-size:clamp(48px,12vw,90px)}.features .feature .feature-bottom{padding-bottom:15px}.film-position{display:none}}
+@media(prefers-reduced-motion:reduce){.features .feature .bg{transform:none!important}.features .feature .feature-bottom{transform:none!important;opacity:1!important}}
+
+/* v12: bilingual titles and seven-at-a-time browsing */
+.feature-name-ko{font-size:clamp(17px,2.35vw,33px);font-weight:600;letter-spacing:-.035em;line-height:1.25;margin-top:14px;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.film-row .title-wrap{display:flex;flex-direction:column;gap:8px;min-width:0}
+.film-row .title-ko{font-size:clamp(14px,1.35vw,20px);font-weight:550;color:#bcbcb8;letter-spacing:-.02em}
+.programs-more{display:block;margin:38px auto 0;background:transparent;border:1px solid rgba(255,255,255,.68);padding:17px 42px;font-size:12px;font-weight:800;letter-spacing:.18em;transition:background .2s,color .2s}
+.programs-more:hover{background:#f1f1ee;color:#111}
+.programs-more[hidden]{display:none}
+.detail-ko{font-size:clamp(19px,2.4vw,34px);font-weight:600;letter-spacing:-.03em;margin:-10px 0 23px;color:#d4d4d0}
+@media(max-width:750px){.feature-name-ko{font-size:18px;margin-top:12px}.programs-more{width:100%;max-width:240px}}
+
+/* V13 · editorial, mixed-case English typography */
+.intro h1{font-weight:500;letter-spacing:-.055em}
+.feature-name{
+  font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo",sans-serif;
+  font-weight:400;
+  letter-spacing:-.045em;
+  line-height:1.01;
+  text-transform:none;
+  font-size:clamp(48px,7.2vw,118px);
+}
+.film-row .title{
+  font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo",sans-serif;
+  font-weight:400;
+  letter-spacing:-.045em;
+  line-height:1.07;
+  text-transform:none;
+  font-size:clamp(30px,4.6vw,72px);
+}
+.detail h1{
+  font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo",sans-serif;
+  font-weight:400;
+  letter-spacing:-.045em;
+  line-height:1.02;
+  text-transform:none;
+}
+.section-top h2{font-weight:500;letter-spacing:-.055em}
+@media(max-width:750px){.feature-name{font-size:clamp(46px,11vw,75px)}.film-row .title{font-size:clamp(30px,7.2vw,51px)}}
+
+/* v20 — immediate cinematic opening, titles anchored at the foot of each image */
+.features .feature{justify-content:flex-end;}
+.features .feature .feature-bottom{margin-top:auto;align-items:flex-end;position:relative;bottom:0;}
+.features .feature .feature-name{font-weight:400;text-transform:none;}
+@media(max-width:750px){.features .feature .feature-bottom{padding-bottom:24px;}}
+
+/* v27: optical alignment — Korean title shifted right relative to English title */
+.features .feature .feature-name-ko{position:relative;left:11px}
+@media(max-width:750px){.features .feature .feature-name-ko{left:9px}}
+
+/* v31: minimal director portrait and bilingual comment */
+.director-note{background:#fff;color:#101010;padding:clamp(75px,9vw,145px) var(--pad);position:relative;z-index:4}
+.director-note__grid{display:grid;grid-template-columns:minmax(270px,.95fr) minmax(0,1.05fr);gap:clamp(38px,7vw,120px);align-items:center}
+.director-note__portrait{position:relative;aspect-ratio:4/5;background:#c8c7c2;overflow:hidden}
+.director-note__portrait:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 30% 23% at 50% 35%,#858480 0 84%,transparent 85%),radial-gradient(ellipse 58% 45% at 50% 95%,#777670 0 70%,transparent 71%),linear-gradient(135deg,#eceae5,#b2b0aa);filter:grayscale(1)}
+.director-note__content{display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.director-note__name{font-size:clamp(13px,1.15vw,18px);font-weight:600;letter-spacing:.015em;margin:0 0 clamp(26px,3.5vw,48px)}
+.director-note__quote-en{font-size:clamp(29px,3.1vw,55px);font-weight:400;letter-spacing:-.048em;line-height:1.2;margin:0 0 clamp(24px,3vw,39px);max-width:850px}
+.director-note__quote-ko{font-size:clamp(16px,1.5vw,23px);font-weight:400;letter-spacing:-.035em;line-height:1.65;margin:0;word-break:keep-all;max-width:700px}
+@media(max-width:750px){.director-note{padding:65px var(--pad)}.director-note__grid{grid-template-columns:1fr;gap:38px}.director-note__portrait{aspect-ratio:5/4}.director-note__name{margin-bottom:24px}.director-note__quote-en{font-size:clamp(28px,7vw,40px)}.director-note__quote-ko{font-size:17px}}
+
+
+/* v32: Korean-only editorial director typography */
+
+.director-note__name{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:clamp(14px,1.25vw,18px);font-weight:500;letter-spacing:-.035em;margin-bottom:clamp(28px,3.5vw,52px)}
+.director-note__quote-ko{font-family:'Noto Serif KR','Nanum Myeongjo','AppleMyungjo',serif;font-weight:400;font-size:clamp(31px,3.65vw,61px);line-height:1.54;letter-spacing:-.065em;word-break:keep-all;overflow-wrap:break-word;max-width:760px}
+@media(max-width:750px){.director-note__quote-ko{font-size:clamp(26px,6.2vw,39px);line-height:1.62;letter-spacing:-.055em}}
+
+/* v34 — full-bleed, standalone director image; no article navigation */
+.director-note{width:100%;margin:0;padding:0!important;background:#fff;position:relative;z-index:4}
+.director-note__grid{display:block;width:100%;margin:0;padding:0}
+.director-note__portrait{display:block;width:100%;height:100svh;min-height:620px;aspect-ratio:auto!important;overflow:hidden;margin:0;background:#b6b4af;cursor:default}
+.director-note__portrait:before{background-size:cover;background-position:center center}
+.director-note__content{left:clamp(30px,5vw,75px);right:clamp(30px,5vw,75px);bottom:clamp(45px,5vw,78px);pointer-events:none}
+.director-note__quote-ko{max-width:min(850px,90%)}
+@media(max-width:750px){.director-note{padding:0!important}.director-note__portrait{height:100svh;min-height:560px;aspect-ratio:auto!important}.director-note__content{left:24px;right:24px;bottom:50px}.director-note__quote-ko{max-width:100%}}
+
+
+/* Standalone HTML: v36 director comment true bottom alignment */
+.director-note{position:relative!important;width:100%!important;height:100svh!important;min-height:610px!important;padding:0!important;background:#111!important;overflow:hidden!important}
+.director-note__grid,.director-note__portrait{position:relative!important;width:100%!important;height:100%!important;min-height:0!important;aspect-ratio:auto!important;display:block!important}
+.director-note__portrait{background-size:cover!important;background-position:center!important}
+.director-note__portrait.has-photo::before{content:""!important;position:absolute!important;inset:0!important;background:linear-gradient(180deg,rgba(0,0,0,.06) 40%,rgba(0,0,0,.64) 100%)!important;filter:none!important}
+.director-note__content{position:absolute!important;inset:auto 0 clamp(36px,5vw,72px) 0!important;width:100%!important;height:auto!important;padding:0 clamp(28px,5vw,84px)!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-end!important;transform:none!important;z-index:3!important;pointer-events:none!important}
+.director-note__quote-ko{max-width:min(1140px,95%)!important;font-size:clamp(29px,3.7vw,60px)!important;line-height:1.5!important;text-align:center!important;color:#fff!important;margin:0!important}
+@media(max-width:750px){.director-note{min-height:520px!important}.director-note__content{bottom:32px!important;padding:0 22px!important}.director-note__quote-ko{font-size:clamp(24px,6.9vw,37px)!important;max-width:100%!important}}
+/* Static content: poster hover is disabled for touch */
+@media(hover:none){.hover-poster{display:none!important}}
+
+
+==========================================================================================
+FILE: content.js  |  JavaScript — site data
+==========================================================================================
+
+/* LIGHTHOUSE CONTENT SETTINGS — 게시글 연동 없음. 이 파일만 수정하고 다시 업로드하세요.
+   이미지: images/ 폴더에 파일을 넣고 경로를 적습니다. 예) images/celine-still.jpg
+   featured: 메인 영화 3개의 id를 순서대로 적습니다.
+   films: PROGRAMS 전체 목록입니다. 위쪽부터 홈페이지에 노출됩니다.
+   heroImage: 메인/상세 스틸 (권장 2560×1440)
+   posterImage: PROGRAMS 마우스 오버 포스터 (권장 1200×1800)
+   director.photo: 감독 섹션 전체 배경. 비워두면 기존 임시 그래픽이 표시됩니다.
+*/
+window.LIGHTHOUSE_CONTENT = {
+  "featured": [
+    "celine",
+    "eureka",
+    "contempt"
+  ],
+  "films": [
+    {
+      "id": "celine",
+      "title": "Céline and Julie Go Boating",
+      "titleKo": "셀린느와 줄리 배 타러 가다",
+      "release": "2026.09.30",
+      "director": "Jacques Rivette",
+      "year": "1974",
+      "heroImage": "https://cdn.i-scmp.com/sites/default/files/styles/1020x680/public/images/methode/2017/08/17/ae0c4f96-7ccc-11e7-83c9-6be3df13972a_1280x720_105429.jpg?itok=Hxf65raV",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "Two women enter a strange, playful world of memory and fantasy."
+    },
+    {
+      "id": "eureka",
+      "title": "Eureka",
+      "titleKo": "유레카",
+      "release": "2026.05.27",
+      "director": "Shinji Aoyama",
+      "year": "2000",
+      "heroImage": "https://www.koreafilm.or.kr/upload/programMovieManage/202209/046a2299-cb79-4f3d-88f8-55b6de9d00b9.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "A journey of survival and connection across the landscapes of Kyushu."
+    },
+    {
+      "id": "contempt",
+      "title": "Contempt",
+      "titleKo": "경멸",
+      "release": "2026.07.15",
+      "director": "Jean-Luc Godard",
+      "year": "1963",
+      "heroImage": "https://assets.eyefilm.nl/images/production/_2560x1440_crop_center-center_none/still_Le-M%C3%A9pris-Jean-Luc-Godard-FR-1963-1.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "A film about cinema, love, and the distance between two people."
+    },
+    {
+      "id": "wicker",
+      "title": "The Wicker Man",
+      "titleKo": "위커 맨",
+      "release": "",
+      "director": "Robin Hardy",
+      "year": "1973",
+      "heroImage": "images/hero-fallback-1.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "A mysterious island and a haunting clash of beliefs."
+    },
+    {
+      "id": "umbrella",
+      "title": "The Umbrellas of Cherbourg",
+      "titleKo": "쉘부르의 우산",
+      "release": "",
+      "director": "Jacques Demy",
+      "year": "1964",
+      "heroImage": "images/hero-fallback-2.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "영화 소개 문구를 입력해 주세요."
+    },
+    {
+      "id": "landscape",
+      "title": "Landscape in the Mist",
+      "titleKo": "안개 속의 풍경",
+      "release": "",
+      "director": "Theo Angelopoulos",
+      "year": "1988",
+      "heroImage": "images/hero-fallback-3.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "영화 소개 문구를 입력해 주세요."
+    },
+    {
+      "id": "remake",
+      "title": "Remake",
+      "titleKo": "리메이크",
+      "release": "",
+      "director": "Ross McElwee",
+      "year": "2025",
+      "heroImage": "images/hero-fallback-1.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "영화 소개 문구를 입력해 주세요."
+    },
+    {
+      "id": "sherman",
+      "title": "Sherman's March",
+      "titleKo": "셔먼의 행진",
+      "release": "",
+      "director": "Ross McElwee",
+      "year": "1986",
+      "heroImage": "images/hero-fallback-2.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "영화 소개 문구를 입력해 주세요."
+    },
+    {
+      "id": "lola",
+      "title": "Lola",
+      "titleKo": "롤라",
+      "release": "",
+      "director": "Jacques Demy",
+      "year": "1961",
+      "heroImage": "images/hero-fallback-3.jpg",
+      "posterImage": "images/sample-poster.jpg",
+      "summary": "영화 소개 문구를 입력해 주세요."
+    }
+  ],
+  "director": {
+    "photo": "",
+    "quote": "감독의 코멘트를 이곳에 담습니다. 한 문장 한 문장이 오래 머무를 수 있도록."
+  },
+  "promo": {
+    "image": "images/promo-example.jpg",
+    "titleLines": [
+      "Objects &",
+      "Moving Images."
+    ],
+    "subtitle": "영화 밖에서 이어지는 새로운 경험",
+    "url": "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry"
+  }
+};
+
+
+==========================================================================================
+FILE: app.js  |  JavaScript — site behavior
+==========================================================================================
+
+(function(){
+'use strict';
+const data = window.LIGHTHOUSE_CONTENT || {};
+const films = Array.isArray(data.films) ? data.films : [];
+const byId = Object.fromEntries(films.map(f => [f.id,f]));
+const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (v,min,max) => Math.min(max,Math.max(min,v));
+const site=document.getElementById('site');
+const detail=document.getElementById('detail');
+
+// MAIN: choose any 3 film IDs from content.js
+const scenes=[...document.querySelectorAll('.features > .feature')];
+const ids = (data.featured||[]).slice(0,3);
+scenes.forEach((scene,i)=>{
+ const f=byId[ids[i]];
+ if(!f){scene.hidden=true;return;}
+ const bg=scene.querySelector('.bg');
+ const fallback=bg.dataset.fallback || `images/hero-fallback-${i+1}.jpg`;
+ bg.src=f.heroImage||fallback;
+ bg.onerror=()=>{bg.onerror=null;bg.src=fallback;};
+ scene.querySelector('.feature-name').textContent=f.title;
+ const nameKo=scene.querySelector('.feature-name-ko');
+ nameKo.textContent=f.titleKo||'';
+ if(f.release){const date=document.createElement('span');date.className='feature-release-inline';date.textContent=f.release;nameKo.append(date);}
+ scene.querySelector('.feature-link').href='#film-'+encodeURIComponent(f.id);
+ const clickArea=document.createElement('a');
+ clickArea.className='feature-image-link';
+ clickArea.href='#film-'+encodeURIComponent(f.id);
+ clickArea.setAttribute('aria-label',f.title+' — View film details');
+ scene.insertBefore(clickArea,scene.querySelector('.feature-bottom'));
+});
+
+// PROGRAMS: the 7-at-a-time list, generated exclusively from content.js
+const filmList=document.getElementById('film-list');
+filmList.replaceChildren();
+films.forEach((f,i)=>{
+ const row=document.createElement('a');
+ row.className='film-row';row.href='#film-'+encodeURIComponent(f.id);row.dataset.key=f.id;
+ row.innerHTML='<span class="title-wrap"><span class="title">'+esc(f.title)+'</span><span class="title-ko">'+esc(f.titleKo)+'</span></span><span class="info">'+esc((f.director||'').toUpperCase())+' · '+esc(f.year||'')+' ↗</span>';
+ if(i>=7)row.style.display='none';
+ filmList.append(row);
+});
+const more=document.getElementById('moreFilms');
+function updateMore(){if(more)more.hidden=![...filmList.children].some(row=>row.style.display==='none');}
+more?.addEventListener('click',()=>{
+ const hidden=[...filmList.children].filter(x=>x.style.display==='none');
+ hidden.slice(0,7).forEach(row=>{row.style.display='flex';if(row.animate)row.animate([{opacity:0,transform:'translateY(16px)'},{opacity:1,transform:'translateY(0)'}],{duration:380,fill:'both'});});
+ updateMore();
+});updateMore();
+
+// DIRECTOR: full-screen image, Korean quote only, no link
+const director=data.director||{};
+const portrait=document.querySelector('.director-note__portrait');
+if(portrait && director.photo){portrait.classList.add('has-photo');portrait.style.backgroundImage='url('+JSON.stringify(director.photo)+')';}
+const quote=document.querySelector('.director-note__quote-ko');
+if(quote)quote.textContent=director.quote||'';
+
+// PROMO: optional external destination, no blog/CMS dependency
+const promo=data.promo||{};
+const promoCard=document.querySelector('.promo-card');
+if(promoCard && promo.url)promoCard.href=promo.url;
+const promoPhoto=document.querySelector('.promo-photo');
+if(promoPhoto && promo.image)promoPhoto.src=promo.image;
+const promoTitle=document.querySelector('.promo-copy h2');
+if(promoTitle && Array.isArray(promo.titleLines))promoTitle.innerHTML=promo.titleLines.map(esc).join('<br>');
+const promoDesc=document.querySelector('.promo-copy p');
+if(promoDesc && promo.subtitle)promoDesc.textContent=promo.subtitle;
+
+// FILM DETAILS: small client-side pages reached from hero and PROGRAMS
+function route(){
+ const hash=decodeURIComponent(location.hash.slice(1));
+ const film=films.find(f=>'film-'+f.id===hash);
+ if(film){
+  site.classList.add('hidden');detail.classList.add('active');
+  detail.innerHTML='<button class="back" type="button" id="filmBack">← ALL PROGRAMS</button>'+
+   '<h1>'+esc(film.title)+'</h1><div class="detail-ko">'+esc(film.titleKo||'')+'</div>'+
+   '<div class="byline">A FILM BY '+esc((film.director||'').toUpperCase())+' · '+esc(film.year||'')+'</div>'+
+   '<img class="still" src="'+esc(film.heroImage||'images/hero-fallback-1.jpg')+'" alt="'+esc(film.title)+'">'+
+   '<div class="details"><p>'+esc(film.summary||'')+'</p><aside>DIRECTOR — '+esc(film.director||'')+'<br>YEAR — '+esc(film.year||'')+'</aside></div>';
+  detail.querySelector('#filmBack').addEventListener('click',()=>{location.hash='programs';});
+  window.scrollTo(0,0);
+ }else{
+  const wasActive=detail.classList.contains('active');
+  detail.classList.remove('active');site.classList.remove('hidden');
+  if(wasActive){requestAnimationFrame(()=>{const t=document.getElementById(hash);if(t)t.scrollIntoView();});}
+ }
+}
+window.addEventListener('hashchange',route);route();
+
+// Magnetic poster hover (desktop)
+const poster=document.getElementById('hoverPoster'),image=document.getElementById('hoverImg');
+let active=false,animation=null,targetX=0,targetY=0,curX=0,curY=0,targetR=-4,curR=-4;
+function animatePoster(){
+ curX+=(targetX-curX)*.16;curY+=(targetY-curY)*.16;curR+=(targetR-curR)*.12;
+ poster.style.left=curX+'px';poster.style.top=curY+'px';poster.style.setProperty('--r',curR+'deg');
+ if(active||Math.abs(targetX-curX)>.2||Math.abs(targetY-curY)>.2||Math.abs(targetR-curR)>.2)animation=requestAnimationFrame(animatePoster);
+ else animation=null;
+}
+function ensure(){if(!animation)animation=requestAnimationFrame(animatePoster);}
+for(const row of filmList.querySelectorAll('.film-row')){
+ const f=byId[row.dataset.key];if(!f)continue;
+ row.addEventListener('mouseenter',e=>{
+  image.src=f.posterImage||'images/sample-poster.jpg';poster.classList.add('visible');active=true;
+  targetX=curX=clamp(e.clientX+150,160,innerWidth-160);
+  targetY=curY=clamp(e.clientY+170,170,innerHeight-170);ensure();
+ });
+ row.addEventListener('mousemove',e=>{
+  const x=clamp(e.clientX+150,160,innerWidth-160),y=clamp(e.clientY+170,170,innerHeight-170);
+  targetR=clamp((x-targetX)*.06,-8,8);targetX=x;targetY=y;ensure();
+ });
+ row.addEventListener('mouseleave',()=>{active=false;targetR=-4;poster.classList.remove('visible');ensure();});
+}
+
+// Curtain + subtle lens movement (no cinematic cursor).
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
+let pending=false;
+function paint(){
+ pending=false;
+ if(detail.classList.contains('active'))return;
+ scenes.forEach((scene,index)=>{
+  if(reducedMotion.matches){scene.style.setProperty('--curtain-cut','0%');scene.style.setProperty('--curtain-shade','0');scene.style.setProperty('--zoom','1');scene.style.setProperty('--shift','0px');scene.style.setProperty('--text-shift','0px');scene.style.setProperty('--text-opacity','1');return;}
+  const vh=innerHeight||1, rect=scene.getBoundingClientRect(), entry=clamp(1-rect.top/vh,0,1);
+  const wipe=index===0?0:(1-entry)*(1-entry)*11;
+  const shade=index===0?0:(1-entry)*.30;
+  const proximity=clamp((rect.top+rect.height*.5-vh*.5)/vh,-1,1);
+  const zoom=1.025+entry*.02;
+  scene.style.setProperty('--curtain-cut',wipe.toFixed(2)+'%');scene.style.setProperty('--curtain-shade',shade.toFixed(3));
+  scene.style.setProperty('--zoom',zoom.toFixed(4));scene.style.setProperty('--shift',clamp(-proximity*7,-7,7).toFixed(2)+'px');
+  const p=clamp((rect.top-vh*.14)/vh,-1,1);
+  scene.style.setProperty('--text-shift',(p*18).toFixed(1)+'px');scene.style.setProperty('--text-opacity',String(Math.max(.72,1-Math.abs(p)*.16)));
+ });
+}
+function requestPaint(){if(!pending){pending=true;requestAnimationFrame(paint);}}
+window.addEventListener('scroll',requestPaint,{passive:true});window.addEventListener('resize',requestPaint,{passive:true});reducedMotion.addEventListener?.('change',requestPaint);paint();
+})();
+
+
