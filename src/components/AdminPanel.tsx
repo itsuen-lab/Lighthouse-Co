@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS } from "../data/content.ts";
+import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo } from "../data/content.ts";
 import {
   Film as FilmIcon,
   Quote,
@@ -95,6 +95,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     if (!Array.isArray(copy.navItems) || copy.navItems.length === 0) {
       copy.navItems = DEFAULT_NAV_ITEMS;
+    }
+    if (!copy.contact) {
+      copy.contact = {
+        email: "keeper@lighthouse.re.kr",
+        youtubeUrl: "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg",
+        instagramUrl: "https://www.instagram.com/filmlighthouse",
+        xUrl: "https://x.com/filmxlighthouse",
+        inquiryEndpoint: "https://script.google.com/macros/s/AKfycbx5J9UTRPe0IM9mRuEUbhs9fjDnJOZgqgiGfTlD9DyQEOpJ-TDCTArqym1iRo3o-_qVqg/exec",
+      };
     }
     return copy;
   });
@@ -307,6 +316,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }));
       showToast("메인 메뉴가 기본값으로 복원되었습니다.");
     }
+  };
+
+  const handleContactChange = (field: keyof ContactInfo, value: string) => {
+    setData((prev) => ({
+      ...prev,
+      contact: {
+        email: prev.contact?.email || "keeper@lighthouse.re.kr",
+        youtubeUrl: prev.contact?.youtubeUrl || "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg",
+        instagramUrl: prev.contact?.instagramUrl || "https://www.instagram.com/filmlighthouse",
+        xUrl: prev.contact?.xUrl || "https://x.com/filmxlighthouse",
+        inquiryEndpoint: prev.contact?.inquiryEndpoint || "https://script.google.com/macros/s/AKfycbx5J9UTRPe0IM9mRuEUbhs9fjDnJOZgqgiGfTlD9DyQEOpJ-TDCTArqym1iRo3o-_qVqg/exec",
+        [field]: value,
+      },
+    }));
   };
 
   const handleRemoveFeatured = (index: number) => {
@@ -2829,20 +2852,69 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
           {activeTab === "contact" && (
             <div style={{ maxWidth: "800px" }}>
               <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
-                연락처 및 소셜 미디어 (CONTACT)
+                연락처 및 문의 폼 설정 (CONTACT)
               </h2>
               <p style={{ margin: "0 0 28px", color: "#888", fontSize: "13px" }}>
-                하단 CONTACT 영역에 표시되는 공식 이메일 및 채널 링크를 관리합니다.
+                하단 CONTACT 영역에 표시되는 공식 이메일, 소셜 미디어 및 구글 앱스 스크립트 문의 폼 연동 URL을 관리합니다.
               </p>
 
               <div style={{ background: "#101010", border: "1px solid rgba(255,255,255,0.12)", padding: "28px" }}>
+                {/* Google Apps Script Endpoint */}
+                <div style={{ marginBottom: "28px", paddingBottom: "24px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: 600, color: "#f59e0b", letterSpacing: "0.02em" }}>
+                      ● 구글 앱스 스크립트 문의 폼 연동 URL (Google Apps Script Web App)
+                    </label>
+                    {data.contact?.inquiryEndpoint && (
+                      <a
+                        href={data.contact.inquiryEndpoint}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          fontSize: "11px",
+                          color: "#aaa",
+                          textDecoration: "underline",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        엔드포인트 열기 <ExternalLink size={11} />
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={data.contact?.inquiryEndpoint ?? ""}
+                    placeholder="https://script.google.com/macros/s/.../exec"
+                    onChange={(e) => handleContactChange("inquiryEndpoint", e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#080808",
+                      border: "1px solid rgba(245, 158, 11, 0.4)",
+                      color: "#fff",
+                      padding: "11px 14px",
+                      fontSize: "13px",
+                      outline: "none",
+                      fontFamily: "monospace",
+                    }}
+                  />
+                  <p style={{ fontSize: "11px", color: "#888", marginTop: "8px", lineHeight: 1.5 }}>
+                    방문자가 웹사이트의 <strong>CONTACT 문의 폼</strong>에 이름, 연락처, 문의 유형, 메시지를 입력하고 전송 버튼을 누르면 이 구글 앱스 스크립트 URL로 데이터가 자동 전송됩니다.
+                    <br />
+                    전송 파라미터: <code style={{ color: "#f59e0b" }}>name</code>, <code style={{ color: "#f59e0b" }}>email/contact</code>, <code style={{ color: "#f59e0b" }}>category</code>, <code style={{ color: "#f59e0b" }}>subject</code>, <code style={{ color: "#f59e0b" }}>message</code>, <code style={{ color: "#f59e0b" }}>timestamp</code>
+                  </p>
+                </div>
+
                 <div style={{ marginBottom: "20px" }}>
                   <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
                     대표 이메일 주소 (Email)
                   </label>
                   <input
                     type="text"
-                    defaultValue="keeper@lighthouse.re.kr"
+                    value={data.contact?.email ?? "keeper@lighthouse.re.kr"}
+                    onChange={(e) => handleContactChange("email", e.target.value)}
+                    placeholder="keeper@lighthouse.re.kr"
                     style={{
                       width: "100%",
                       background: "#080808",
@@ -2861,7 +2933,9 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   </label>
                   <input
                     type="text"
-                    defaultValue="https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg"
+                    value={data.contact?.youtubeUrl ?? ""}
+                    onChange={(e) => handleContactChange("youtubeUrl", e.target.value)}
+                    placeholder="https://www.youtube.com/channel/..."
                     style={{
                       width: "100%",
                       background: "#080808",
@@ -2881,7 +2955,9 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   </label>
                   <input
                     type="text"
-                    defaultValue="https://www.instagram.com/filmlighthouse"
+                    value={data.contact?.instagramUrl ?? ""}
+                    onChange={(e) => handleContactChange("instagramUrl", e.target.value)}
+                    placeholder="https://www.instagram.com/..."
                     style={{
                       width: "100%",
                       background: "#080808",
@@ -2901,7 +2977,9 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   </label>
                   <input
                     type="text"
-                    defaultValue="https://x.com/filmxlighthouse"
+                    value={data.contact?.xUrl ?? ""}
+                    onChange={(e) => handleContactChange("xUrl", e.target.value)}
+                    placeholder="https://x.com/..."
                     style={{
                       width: "100%",
                       background: "#080808",

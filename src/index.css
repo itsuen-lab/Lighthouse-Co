@@ -677,9 +677,9 @@ button:focus-visible {
 
 /* Contact Section */
 .contact {
-  padding: 110px var(--pad);
+  padding: clamp(80px, 9vw, 130px) var(--pad) clamp(90px, 10vw, 140px);
   min-height: 65vh;
-  border-top: 1px solid #777;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
   background: var(--bg);
   position: relative;
   z-index: 50;
@@ -687,47 +687,388 @@ button:focus-visible {
   max-width: 100%;
 }
 
-.contact h2 {
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(48px, 6vw, 84px);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .contact-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.02fr);
+    gap: clamp(48px, 6vw, 84px);
+  }
+}
+
+.contact-info-col h2 {
   font-family: Arial, 'Helvetica Neue', sans-serif;
-  font-size: clamp(65px, 11vw, 170px);
+  font-size: clamp(56px, 9vw, 140px);
   letter-spacing: -0.08em;
-  margin: 0 0 50px;
+  margin: 0 0 24px;
   line-height: 0.85;
 }
 
+.contact-lead-box {
+  margin-bottom: 34px;
+  max-width: 580px;
+}
+
+.contact-lead-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #e5e5e0;
+  margin: 0 0 10px;
+}
+
+.contact-lead-desc {
+  font-size: clamp(14px, 1.25vw, 16px);
+  line-height: 1.65;
+  color: #9e9d99;
+  margin: 0;
+  word-break: keep-all;
+}
+
 .contact-links {
-  border-top: 1px solid rgba(255, 255, 255, 0.32);
-  max-width: 1000px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  max-width: 600px;
 }
 
 .contact-links > a {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 35px;
-  gap: 16px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 26px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.32);
-  font-size: clamp(18px, 2.2vw, 34px);
-  font-weight: 400;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   text-decoration: none;
   color: inherit;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .contact-links > a:hover {
-  opacity: 0.57;
+  opacity: 0.65;
+  transform: translateX(4px);
 }
 
-.contact-links .contact-label {
-  font-size: 10px;
+.contact-link-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.contact-link-body .contact-label {
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.13em;
-  color: #aaa;
+  letter-spacing: 0.14em;
+  color: #888;
+}
+
+.contact-link-body .contact-val {
+  font-size: clamp(17px, 1.8vw, 26px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: #eae8e3;
 }
 
 .contact-links .contact-arrow {
   text-align: right;
-  font-size: 24px;
+  font-size: 20px;
+  color: #888;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.contact-links > a:hover .contact-arrow {
+  color: #fff;
+  transform: translate(2px, -2px);
+}
+
+.contact-copyright-badge {
+  margin-top: 36px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #666;
+}
+
+.contact-meta-dot {
+  font-size: 6px;
+  color: #444;
+}
+
+/* Inquiry Form Card */
+.inquiry-card {
+  background: #111111;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: clamp(26px, 3.8vw, 42px);
+  position: relative;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.85);
+}
+
+.inquiry-card-header {
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 18px;
+}
+
+.inquiry-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #f59e0b;
+  margin-bottom: 8px;
+}
+
+.inquiry-kicker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+}
+
+.inquiry-heading {
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 500;
+  margin: 0 0 6px;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.inquiry-subheading {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #8c8b88;
+  margin: 0;
+  word-break: keep-all;
+}
+
+.inquiry-form-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.inquiry-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.inquiry-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #bbb;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inquiry-required-mark {
+  color: #f59e0b;
+  font-weight: bold;
+}
+
+.inquiry-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inquiry-cat-chip {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inquiry-cat-chip:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.inquiry-cat-chip.active {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #111111;
+  font-weight: 600;
+}
+
+.cat-chip-dot {
+  font-size: 8px;
+  color: #f59e0b;
+}
+
+.inquiry-text-input,
+.inquiry-textarea-input {
+  width: 100%;
+  background: #090909;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s;
+  font-family: inherit;
+  border-radius: 0;
+}
+
+.inquiry-text-input:focus,
+.inquiry-textarea-input:focus {
+  border-color: #ffffff;
+  background: #0e0e0e;
+}
+
+.inquiry-textarea-input {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+.inquiry-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+
+.inquiry-privacy-notice {
+  font-size: 11px;
+  color: #666;
+  margin: 2px 0 4px;
+  line-height: 1.45;
+}
+
+.inquiry-submit-action {
+  width: 100%;
+  background: #f4f4f2;
+  color: #0d0d0d;
+  border: 1px solid #f4f4f2;
+  padding: 15px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s, transform 0.15s, color 0.2s;
+}
+
+.inquiry-submit-action:hover:not(:disabled) {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.inquiry-submit-action:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.inquiry-success-view {
+  text-align: center;
+  padding: 24px 12px;
+}
+
+.inquiry-success-icon-wrap {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  color: #4ade80;
+}
+
+.inquiry-success-view h4 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 10px;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.inquiry-success-sub {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #a1a09d;
+  max-width: 440px;
+  margin: 0 auto 24px;
+  word-break: keep-all;
+}
+
+.inquiry-summary-card {
+  background: #090909;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 16px 20px;
+  text-align: left;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inquiry-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.inquiry-summary-label {
+  color: #777;
+}
+
+.inquiry-summary-val {
+  color: #eee;
+  font-weight: 500;
+}
+
+.inquiry-summary-pill {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+.inquiry-reset-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 12px 24px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.inquiry-reset-btn:hover {
+  background: #fff;
+  color: #111;
 }
 
 /* Detail View */

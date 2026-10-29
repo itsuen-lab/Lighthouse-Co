@@ -36,6 +36,14 @@ export interface NavItem {
   visible?: boolean;
 }
 
+export interface ContactInfo {
+  email: string;
+  youtubeUrl: string;
+  instagramUrl: string;
+  xUrl: string;
+  inquiryEndpoint: string;
+}
+
 export interface SiteContent {
   navItems?: NavItem[];
   featured: string[];
@@ -52,6 +60,7 @@ export interface SiteContent {
     url: string;
   };
   promos: PromoCard[];
+  contact?: ContactInfo;
 }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
@@ -219,5 +228,12 @@ export const INITIAL_CONTENT: SiteContent = {
       url: "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
       image: "/images/promo-example.jpg",
     }
-  ]
+  ],
+  contact: {
+    email: "keeper@lighthouse.re.kr",
+    youtubeUrl: "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg",
+    instagramUrl: "https://www.instagram.com/filmlighthouse",
+    xUrl: "https://x.com/filmxlighthouse",
+    inquiryEndpoint: "https://script.google.com/macros/s/AKfycbx5J9UTRPe0IM9mRuEUbhs9fjDnJOZgqgiGfTlD9DyQEOpJ-TDCTArqym1iRo3o-_qVqg/exec",
+  }
 };
