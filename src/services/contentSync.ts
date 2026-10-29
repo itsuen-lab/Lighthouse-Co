@@ -7,80 +7,120 @@ import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebase.ts";
 import { SiteContent, INITIAL_CONTENT, DEFAULT_NAV_ITEMS } from "../data/content.ts";
 
-// 1. Unified Firestore Collection & Document Path (100% Identical for Read & Write)
 export const CONTENT_COLLECTION = "site_content";
 export const CONTENT_DOC_ID = "main";
-export const getContentDocRef = () => doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
 
+export const getContentDocRef = () => {
+  if (!db) return null;
+  try {
+    return doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
+  } catch (err) {
+    console.warn("Failed to create Firestore doc reference:", err);
+    return null;
+  }
+};
+
+/**
+ * Normalizes any raw data into a strictly valid SiteContent object.
+ * Guaranteed never to throw on unexpected types, nulls, or invalid data.
+ */
 export function normalizeContent(raw: any): SiteContent {
   if (!raw || typeof raw !== "object") {
     return INITIAL_CONTENT;
   }
 
-  const base: SiteContent = { ...INITIAL_CONTENT, ...raw };
+  const base: SiteContent = {
+    ...INITIAL_CONTENT,
+    ...raw,
+  };
 
-  // Guarantee non-empty films list
+  // 1. Validate & sanitize films
   if (!Array.isArray(base.films) || base.films.length === 0) {
     base.films = INITIAL_CONTENT.films;
   } else {
-    base.films = base.films.map((f) => {
-      if (f.id === "celine" && (!f.posterImage || f.posterImage.includes("images.unsplash.com/photo-1485846234645"))) {
-        return { ...f, posterImage: "/assets/aistudio/___________________________________________2_5ecc6cfd.jpg" };
-      }
-      return f;
-    });
+    const validFilms = base.films
+      .filter((f) => f && typeof f === "object" && typeof f.id === "string")
+      .map((f) => {
+        const film = { ...f };
+        if (
+          film.id === "celine" &&
+          (!film.posterImage ||
+            typeof film.posterImage !== "string" ||
+            film.posterImage.includes("images.unsplash.com/photo-1485846234645"))
+        ) {
+          film.posterImage = "/assets/aistudio/___________________________________________2_5ecc6cfd.jpg";
+        }
+        return film;
+      });
+
+    base.films = validFilms.length > 0 ? validFilms : INITIAL_CONTENT.films;
   }
 
-  // Guarantee non-empty featured list
+  // 2. Validate & sanitize featured list (must be array of string IDs)
   if (!Array.isArray(base.featured) || base.featured.length === 0) {
     base.featured = INITIAL_CONTENT.featured;
-  }
-
-  // Guarantee promos
-  if (!Array.isArray(base.promos) || base.promos.length === 0) {
-    if (raw && raw.promo) {
-      base.promos = [
-        {
-          id: "promo-1",
-          badgeTopLeft: "LIGHTHOUSE / FEATURED PROJECT",
-          badgeTopRight: "01 — SPECIAL PROJECT",
-          kicker: "EXPLORE BEYOND THE SCREEN",
-          titleLines: raw.promo.titleLines || ["Objects &", "Moving Images."],
-          subtitle: raw.promo.subtitle || "영화 밖에서 이어지는 새로운 경험",
-          ctaText: "STORE / EXPLORE",
-          url: raw.promo.url || "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
-          image: raw.promo.image || "/images/promo-example.jpg",
-          visible: true,
-        },
-      ];
-    } else {
-      base.promos = INITIAL_CONTENT.promos;
-    }
   } else {
-    base.promos = base.promos.map((p) => ({
-      ...p,
-      visible: p.visible !== false,
-    }));
+    const rawFeaturedList = base.featured as any[];
+    const validFeatured = rawFeaturedList
+      .map((item: any) => (typeof item === "string" ? item.trim() : item?.id ? String(item.id).trim() : ""))
+      .filter((id: string) => id.length > 0);
+
+    base.featured = validFeatured.length > 0 ? validFeatured : INITIAL_CONTENT.featured;
   }
 
-  // Guarantee navItems
+  // 3. Validate & sanitize promos
+  if (!Array.isArray(base.promos) || base.promos.length === 0) {
+    base.promos = INITIAL_CONTENT.promos;
+  } else {
+    const validPromos = base.promos
+      .filter((p) => p && typeof p === "object" && typeof p.id === "string")
+      .map((p) => ({
+        ...p,
+        titleLines: Array.isArray(p.titleLines)
+          ? p.titleLines.map(String)
+          : [(p as any).title || "SPECIAL PROJECT"],
+        visible: p.visible !== false,
+      }));
+
+    base.promos = validPromos.length > 0 ? validPromos : INITIAL_CONTENT.promos;
+  }
+
+  // 4. Validate & sanitize navItems
   if (!Array.isArray(base.navItems) || base.navItems.length === 0) {
     base.navItems = DEFAULT_NAV_ITEMS;
-  }
-
-  if (base.promosVisible === undefined) {
-    base.promosVisible = true;
-  }
-
-  if (!base.contact) {
-    base.contact = INITIAL_CONTENT.contact;
   } else {
-    base.contact = { ...INITIAL_CONTENT.contact, ...base.contact };
+    const validNav = base.navItems.filter(
+      (n) => n && typeof n === "object" && typeof n.id === "string" && typeof n.label === "string"
+    );
+    base.navItems = validNav.length > 0 ? validNav : DEFAULT_NAV_ITEMS;
   }
 
-  if (!base.director) {
-    base.director = INITIAL_CONTENT.director;
-  }
+  // 5. Visibility and contact metadata
+  base.promosVisible = base.promosVisible !== false;
+
+  const initialContact = INITIAL_CONTENT.contact || {
+    email: "keeper@lighthouse.re.kr",
+    youtubeUrl: "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg",
+    instagramUrl: "https://www.instagram.com/filmlighthouse",
+    xUrl: "https://x.com/filmxlighthouse",
+    inquiryEndpoint: "https://script.google.com/macros/s/AKfycbx5J9UTRPe0IM9mRuEUbhs9fjDnJOZgqgiGfTlD9DyQEOpJ-TDCTArqym1iRo3o-_qVqg/exec",
+  };
+
+  const rawContact = (base.contact && typeof base.contact === "object" ? base.contact : {}) as any;
+  base.contact = {
+    email: typeof rawContact.email === "string" ? rawContact.email : initialContact.email,
+    youtubeUrl: typeof rawContact.youtubeUrl === "string" ? rawContact.youtubeUrl : initialContact.youtubeUrl,
+    instagramUrl: typeof rawContact.instagramUrl === "string" ? rawContact.instagramUrl : initialContact.instagramUrl,
+    xUrl: typeof rawContact.xUrl === "string" ? rawContact.xUrl : initialContact.xUrl,
+    inquiryEndpoint: typeof rawContact.inquiryEndpoint === "string" ? rawContact.inquiryEndpoint : initialContact.inquiryEndpoint,
+  };
+
+  const rawDirector = (base.director && typeof base.director === "object" ? base.director : {}) as any;
+  base.director = {
+    photo: typeof rawDirector.photo === "string" ? rawDirector.photo : INITIAL_CONTENT.director.photo,
+    quote: typeof rawDirector.quote === "string" ? rawDirector.quote : INITIAL_CONTENT.director.quote,
+    name: typeof rawDirector.name === "string" ? rawDirector.name : INITIAL_CONTENT.director.name,
+  };
 
   return base;
 }
@@ -91,7 +131,7 @@ export function getStoredLocalContent(): SiteContent | null {
       const saved = window.localStorage.getItem("lighthouse_content");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed.films) && parsed.films.length > 0) {
+        if (parsed && typeof parsed === "object") {
           return normalizeContent(parsed);
         }
       }
@@ -103,31 +143,35 @@ export function getStoredLocalContent(): SiteContent | null {
 }
 
 /**
- * Real-time Firestore subscription:
- * - Listens directly to doc(db, 'site_content', 'main') via onSnapshot.
- * - Firestore cloud data ALWAYS takes absolute top priority and overrides any local state as soon as it arrives.
+ * Subscribes in real-time to Firestore.
+ * Always passes local or default content first so render is instant.
+ * Then overrides with cloud data as soon as Firestore connects.
  */
 export function subscribeToSiteContent(
   onUpdate: (content: SiteContent, isCloud: boolean) => void,
   onError?: (err: Error) => void
 ): () => void {
-  // Emit initial state so there is no blank screen while connecting
-  const fallback = getStoredLocalContent() || INITIAL_CONTENT;
-  onUpdate(fallback, false);
+  // 1. Immediately emit default/cached data so page renders in 0.01s
+  const initialData = getStoredLocalContent() || INITIAL_CONTENT;
+  onUpdate(initialData, false);
+
+  const docRef = getContentDocRef();
+  if (!docRef) {
+    console.warn("Firestore not available; operating in local mode.");
+    return () => {};
+  }
 
   try {
-    const docRef = getContentDocRef();
-
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
         try {
           if (snapshot.exists()) {
-            const cloudData = snapshot.data();
-            if (cloudData && typeof cloudData === "object") {
-              const normalized = normalizeContent(cloudData);
+            const rawCloud = snapshot.data();
+            if (rawCloud && typeof rawCloud === "object") {
+              const normalized = normalizeContent(rawCloud);
 
-              // Update cache
+              // Update local cache
               try {
                 if (typeof window !== "undefined" && window.localStorage) {
                   window.localStorage.setItem("lighthouse_content", JSON.stringify(normalized));
@@ -137,41 +181,41 @@ export function subscribeToSiteContent(
                 // ignore
               }
 
-              // Overwrite with Firestore authoritative data
+              // Overwrite with real-time cloud data
               onUpdate(normalized, true);
             }
-          } else {
-            console.info("Firestore site_content/main document does not exist yet.");
           }
         } catch (procErr: any) {
-          console.warn("Firestore snapshot processing error:", procErr);
+          console.warn("Firestore snapshot handling notice:", procErr);
           if (onError) onError(procErr);
         }
       },
       (error) => {
-        console.warn("Firestore onSnapshot error:", error);
+        console.warn("Firestore subscription connection notice:", error?.message || error);
         if (onError) onError(error);
       }
     );
 
     return unsubscribe;
   } catch (err: any) {
-    console.error("Firestore onSnapshot initialization failed:", err);
+    console.warn("Firestore onSnapshot setup notice:", err?.message || err);
     if (onError) onError(err);
     return () => {};
   }
 }
 
 /**
- * Saves content to Firestore doc(db, 'site_content', 'main'):
- * - Uses JSON.parse(JSON.stringify(...)) to eliminate all `undefined` values that Firestore rejects.
- * - Directly calls setDoc so errors (permission, quota, network) are thrown and visible to user.
+ * Saves site content to Firestore after deep cleaning undefined fields.
  */
 export async function saveSiteContentToCloud(content: SiteContent): Promise<SiteContent> {
   const docRef = getContentDocRef();
+  if (!docRef) {
+    throw new Error("Firestore 데이터베이스가 초기화되지 않았습니다.");
+  }
+
   const normalized = normalizeContent(content);
 
-  // 3. Remove all undefined values before saving to Firestore
+  // Deep-clean all undefined values into null/sanitized form
   const sanitized = JSON.parse(
     JSON.stringify(normalized, (_key, value) => {
       return value === undefined ? null : value;
@@ -188,28 +232,27 @@ export async function saveSiteContentToCloud(content: SiteContent): Promise<Site
     updatedBy: "admin",
   };
 
-  // Strict JSON deep-clean pass
-  const cleanPayload = JSON.parse(JSON.stringify(payload));
+  const finalPayload = JSON.parse(JSON.stringify(payload));
 
-  // Perform Firestore write
-  await setDoc(docRef, cleanPayload, { merge: true });
+  await setDoc(docRef, finalPayload, { merge: true });
 
-  // Update local cache & notify other tabs
   try {
     if (typeof window !== "undefined" && window.localStorage) {
-      window.localStorage.setItem("lighthouse_content", JSON.stringify(cleanPayload));
-      window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: cleanPayload }));
+      window.localStorage.setItem("lighthouse_content", JSON.stringify(finalPayload));
+      window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: finalPayload }));
     }
   } catch {
     // ignore
   }
 
-  return cleanPayload;
+  return finalPayload;
 }
 
 export async function checkFirestoreStatus(): Promise<{ connected: boolean; filmCount: number; updatedAt?: string }> {
   try {
     const docRef = getContentDocRef();
+    if (!docRef) return { connected: false, filmCount: 0 };
+
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const d = snap.data();

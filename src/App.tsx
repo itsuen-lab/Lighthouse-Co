@@ -268,14 +268,20 @@ export default function App() {
 
   // Hash-based routing
   const handleHashChange = useCallback(() => {
-    const hash = decodeURIComponent(window.location.hash.slice(1));
+    let hash = "";
+    try {
+      hash = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      hash = window.location.hash.slice(1);
+    }
+
     if (hash === "admin") {
       requestAdminAccess();
       return;
     }
     if (hash.startsWith("film-")) {
       const filmId = hash.replace("film-", "");
-      const found = content.films.find((f) => f.id === filmId);
+      const found = (content.films || []).find((f) => f && f.id === filmId);
       if (found) {
         setActiveFilmId(found.id);
         window.scrollTo(0, 0);
@@ -329,10 +335,14 @@ export default function App() {
   type HeroSlide = FilmHeroSlide | PromoHeroSlide;
 
   const heroSlides: HeroSlide[] = (content.featured || []).reduce<HeroSlide[]>((acc, rawId) => {
-    const cleanPromoId = rawId.startsWith("promo:") ? rawId.replace("promo:", "") : rawId;
-    const cleanFilmId = rawId.startsWith("film:") ? rawId.replace("film:", "") : rawId;
+    if (!rawId) return acc;
+    const strId = typeof rawId === "string" ? rawId : String((rawId as any)?.id || "");
+    if (!strId) return acc;
 
-    const promo = content.promos?.find((p) => p.id === cleanPromoId || p.id === rawId);
+    const cleanPromoId = strId.startsWith("promo:") ? strId.replace("promo:", "") : strId;
+    const cleanFilmId = strId.startsWith("film:") ? strId.replace("film:", "") : strId;
+
+    const promo = (content.promos || []).find((p) => p && (p.id === cleanPromoId || p.id === strId));
     if (promo) {
       acc.push({
         type: "promo",
@@ -350,7 +360,7 @@ export default function App() {
       return acc;
     }
 
-    const film = content.films.find((f) => f.id === cleanFilmId || f.id === rawId);
+    const film = (content.films || []).find((f) => f && (f.id === cleanFilmId || f.id === strId));
     if (film) {
       acc.push({
         type: "film",
@@ -369,10 +379,11 @@ export default function App() {
   }, []);
 
   // Fallback if no hero items selected: first 3 films
+  const availableFilms = content.films && content.films.length > 0 ? content.films : INITIAL_CONTENT.films;
   const finalHeroSlides: HeroSlide[] =
     heroSlides.length > 0
       ? heroSlides
-      : content.films.slice(0, 3).map((film) => ({
+      : availableFilms.slice(0, 3).map((film) => ({
           type: "film",
           id: film.id,
           title: film.title,

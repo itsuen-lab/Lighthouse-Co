@@ -49,22 +49,50 @@ class ErrorBoundary extends Component<Props, State> {
           <p style={{ color: '#aaa', fontSize: '15px', maxWidth: '480px', marginBottom: '24px' }}>
             화면을 불러오는 중 문제가 발생했습니다. 아래 버튼을 눌러 다시 시도해 주세요.
           </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            style={{
-              background: '#f1f1ee',
-              color: '#111',
-              border: 0,
-              padding: '12px 28px',
-              fontSize: '12px',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-            }}
-          >
-            페이지 새로고침
-          </button>
+          {this.state.error && (
+            <pre style={{ fontSize: '11px', color: '#f87171', background: '#1c1917', padding: '10px', borderRadius: '4px', maxWidth: '90%', overflowX: 'auto', marginBottom: '20px' }}>
+              {this.state.error.message}
+            </pre>
+          )}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{
+                background: '#f1f1ee',
+                color: '#111',
+                border: 0,
+                padding: '12px 24px',
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+              }}
+            >
+              페이지 새로고침
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('lighthouse_content');
+                } catch {}
+                window.location.reload();
+              }}
+              style={{
+                background: 'transparent',
+                color: '#f1f1ee',
+                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '12px 24px',
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+              }}
+            >
+              초기 데이터로 복구
+            </button>
+          </div>
         </div>
       );
     }

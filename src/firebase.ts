@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyCSXTFSvq9oGl_2jfBjZiDmSjrBn--TDug",
@@ -16,11 +16,25 @@ export const firebaseConfig = {
   measurementId: "G-CCX4NG5XGL",
 };
 
-// Initialize Firebase safely
-export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Safe Firebase App and Firestore initialization
+let appInstance: FirebaseApp;
+let dbInstance: Firestore;
 
-// Initialize Firestore ONLY (no firebase/auth)
-export const db = getFirestore(app);
+try {
+  appInstance = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  dbInstance = getFirestore(appInstance);
+} catch (error) {
+  console.warn("Firebase initial setup caught (re-trying safely):", error);
+  try {
+    appInstance = initializeApp(firebaseConfig);
+    dbInstance = getFirestore(appInstance);
+  } catch (err2) {
+    console.error("Firebase secondary initialization error:", err2);
+  }
+}
+
+export const app = appInstance!;
+export const db = dbInstance!;
 
 export enum OperationType {
   CREATE = "create",
@@ -39,4 +53,3 @@ export function handleFirestoreError(
   const errMsg = error instanceof Error ? error.message : String(error);
   console.warn(`[Firestore Safe Notice] Operation: ${operationType}, Path: ${path}, Details: ${errMsg}`);
 }
-
