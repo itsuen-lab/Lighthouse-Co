@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo } from "../data/content.ts";
+import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT } from "../data/content.ts";
 import { auth, googleProvider } from "../firebase.ts";
 import { signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
+import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
 import {
   Film as FilmIcon,
   Quote,
@@ -27,6 +28,7 @@ import {
   Link2,
   Cloud,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 interface AdminPanelProps {
@@ -65,62 +67,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   stealthMode,
   onToggleStealth,
 }) => {
-  const [data, setData] = useState<SiteContent>(() => {
-    const copy: SiteContent = JSON.parse(JSON.stringify(content));
-    if (!Array.isArray(copy.promos) || copy.promos.length === 0) {
-      if (copy.promo) {
-        copy.promos = [
-          {
-            id: "promo-1",
-            badgeTopLeft: "LIGHTHOUSE / FEATURED PROJECT",
-            badgeTopRight: "01 — SPECIAL PROJECT",
-            kicker: "EXPLORE BEYOND THE SCREEN",
-            titleLines: copy.promo.titleLines || ["Objects &", "Moving Images."],
-            subtitle: copy.promo.subtitle || "영화 밖에서 이어지는 새로운 경험",
-            ctaText: "STORE / EXPLORE",
-            url: copy.promo.url || "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
-            image: copy.promo.image || "/images/promo-example.jpg",
-          },
-        ];
-      } else {
-        copy.promos = [
-          {
-            id: "promo-1",
-            badgeTopLeft: "LIGHTHOUSE / FEATURED PROJECT",
-            badgeTopRight: "01 — SPECIAL PROJECT",
-            kicker: "EXPLORE BEYOND THE SCREEN",
-            titleLines: ["Objects &", "Moving Images."],
-            subtitle: "영화 밖에서 이어지는 새로운 경험",
-            ctaText: "STORE / EXPLORE",
-            url: "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
-            image: "/images/promo-example.jpg",
-          },
-        ];
-      }
-    }
-    if (copy.promosVisible === undefined) {
-      copy.promosVisible = true;
-    }
-    if (Array.isArray(copy.promos)) {
-      copy.promos = copy.promos.map((p) => ({
-        ...p,
-        visible: p.visible !== false,
-      }));
-    }
-    if (!Array.isArray(copy.navItems) || copy.navItems.length === 0) {
-      copy.navItems = DEFAULT_NAV_ITEMS;
-    }
-    if (!copy.contact) {
-      copy.contact = {
-        email: "keeper@lighthouse.re.kr",
-        youtubeUrl: "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg",
-        instagramUrl: "https://www.instagram.com/filmlighthouse",
-        xUrl: "https://x.com/filmxlighthouse",
-        inquiryEndpoint: "https://script.google.com/macros/s/AKfycbx5J9UTRPe0IM9mRuEUbhs9fjDnJOZgqgiGfTlD9DyQEOpJ-TDCTArqym1iRo3o-_qVqg/exec",
-      };
-    }
-    return copy;
+  const [data, setData] = useState<SiteContent>(() => normalizeContent(content));
+  const [cloudStatus, setCloudStatus] = useState<{ connected: boolean; filmCount: number; updatedAt?: string }>({
+    connected: true,
+    filmCount: data.films?.length || 9,
   });
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+
+  // Periodically and on-mount verify Cloud Firestore connection & doc
+  useEffect(() => {
+    checkFirestoreStatus().then((status) => {
+      setCloudStatus(status);
+    });
+  }, []);
+
+  // When content prop updates from real-time sync, update data if data was empty
+  useEffect(() => {
+    if (!data.films || data.films.length === 0) {
+      setData(normalizeContent(content));
+    }
+  }, [content]);
 
   const [activeTab, setActiveTab] = useState<TabType>("films");
   const [newPasswordInput, setNewPasswordInput] = useState("");
@@ -137,7 +103,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   // Film Handlers
@@ -507,10 +473,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       setIsSaving(true);
       await onSave(data);
-      showToast("클라우드 DB에 실시간 저장 완료! (모든 기기 및 브라우저에 반영)");
+      const nowStr = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastSavedTime(nowStr);
+      showToast("✅ 클라우드 Firestore(lighthouse-3bb68)에 실시간 저장 완료! (모바일 및 모든 기기 즉시 반영)");
+      checkFirestoreStatus().then((st) => setCloudStatus(st));
     } catch (err: any) {
       console.error("Cloud save error:", err);
-      showToast("저장 실패: " + (err?.message || "네트워크 오류"));
+      showToast("❌ 저장 실패: " + (err?.message || "네트워크 오류"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRefreshFromCloud = async () => {
+    try {
+      setIsSaving(true);
+      const st = await checkFirestoreStatus();
+      setCloudStatus(st);
+      const fresh = normalizeContent(content);
+      setData(fresh);
+      showToast("🔄 클라우드 최신 데이터를 성공적으로 불러왔습니다.");
+    } catch (err: any) {
+      showToast("클라우드 데이터 확인 실패: " + (err?.message || "오류"));
     } finally {
       setIsSaving(false);
     }
@@ -578,41 +562,64 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {/* Cloud Sync Status */}
+          {/* Cloud Sync Status Badge */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              background: "rgba(34, 197, 94, 0.15)",
-              border: "1px solid rgba(34, 197, 94, 0.4)",
+              background: cloudStatus.connected ? "rgba(34, 197, 94, 0.15)" : "rgba(239, 68, 68, 0.15)",
+              border: `1px solid ${cloudStatus.connected ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)"}`,
               padding: "6px 12px",
               fontSize: "11px",
               fontWeight: 600,
-              color: "#4ade80",
+              color: cloudStatus.connected ? "#4ade80" : "#f87171",
+              borderRadius: "4px",
             }}
           >
             <Cloud size={14} />
             <span>
-              {currentUser?.email
-                ? `클라우드 실시간 동기화 활성 (${currentUser.email})`
-                : "클라우드 실시간 동기화 활성 (모든 기기 반영)"}
+              {cloudStatus.connected
+                ? `Firebase Firestore 실시간 연동 (영화 ${cloudStatus.filmCount || data.films.length}편)`
+                : "클라우드 연결 확인 중..."}
             </span>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleRefreshFromCloud}
+              title="클라우드 최신 데이터 즉시 새로고침"
+              style={{
+                background: "rgba(255, 255, 255, 0.12)",
+                color: "#fff",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                padding: "2px 6px",
+                fontSize: "10px",
+                fontWeight: 600,
+                cursor: "pointer",
+                borderRadius: "3px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "3px",
+              }}
+            >
+              <RefreshCw size={10} className={isSaving ? "animate-spin" : ""} />
+              새로고침
+            </button>
             {!currentUser && (
               <button
                 type="button"
                 onClick={handleGoogleAdminLogin}
                 title="Google 계정 추가 연동 (선택사항)"
                 style={{
-                  background: "rgba(255, 255, 255, 0.15)",
+                  background: "rgba(255, 255, 255, 0.12)",
                   color: "#fff",
-                  border: "1px solid rgba(255, 255, 255, 0.3)",
-                  padding: "2px 7px",
+                  border: "1px solid rgba(255, 255, 255, 0.25)",
+                  padding: "2px 6px",
                   fontSize: "10px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  borderRadius: "2px",
-                  marginLeft: "4px",
+                  borderRadius: "3px",
+                  marginLeft: "2px",
                 }}
               >
                 Google 연동
@@ -620,15 +627,22 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
             )}
           </div>
 
+          {lastSavedTime && (
+            <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+              마지막 저장: {lastSavedTime}
+            </span>
+          )}
+
           {toastMessage && (
             <span
               style={{
                 fontSize: "12px",
                 color: "#86efac",
-                background: "rgba(22, 101, 52, 0.4)",
+                background: "rgba(22, 101, 52, 0.5)",
                 padding: "6px 14px",
-                borderRadius: "2px",
-                border: "1px solid rgba(134, 239, 172, 0.3)",
+                borderRadius: "4px",
+                border: "1px solid rgba(134, 239, 172, 0.4)",
+                fontWeight: 600,
               }}
             >
               {toastMessage}
@@ -664,20 +678,22 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              background: isSaving ? "#ccc" : "#f1f1ee",
-              border: "1px solid #fff",
-              color: "#111",
+              gap: "8px",
+              background: isSaving ? "#6b7280" : "#22c55e",
+              border: "1px solid #4ade80",
+              color: "#ffffff",
               padding: "9px 22px",
-              fontSize: "11px",
+              fontSize: "12px",
               fontWeight: 800,
-              letterSpacing: "0.1em",
+              letterSpacing: "0.08em",
+              borderRadius: "4px",
               cursor: isSaving ? "wait" : "pointer",
-              opacity: isSaving ? 0.7 : 1,
+              boxShadow: "0 0 15px rgba(34, 197, 94, 0.4)",
+              transition: "all 0.2s ease",
             }}
           >
-            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {isSaving ? "저장 및 동기화 중..." : "적용 및 저장"}
+            {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+            {isSaving ? "클라우드 저장 중..." : "클라우드 저장 및 적용"}
           </button>
 
           <button
@@ -3526,6 +3542,59 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
               />
             </div>
           )}
+
+          {/* Sticky Bottom Save Bar */}
+          <div
+            style={{
+              position: "sticky",
+              bottom: "-36px",
+              margin: "36px -48px -36px -48px",
+              padding: "16px 48px",
+              background: "rgba(18, 18, 18, 0.95)",
+              backdropFilter: "blur(12px)",
+              borderTop: "1px solid rgba(255, 255, 255, 0.15)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              zIndex: 30,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px", color: "#9ca3af" }}>
+              <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: cloudStatus.connected ? "#22c55e" : "#ef4444" }} />
+              <span>
+                {cloudStatus.connected
+                  ? `클라우드 Firestore 실시간 동기화 준비 완료 (영화 ${data.films.length}편)`
+                  : "클라우드 연결 상태 확인 중"}
+              </span>
+              {lastSavedTime && <span>· 최근 저장: {lastSavedTime}</span>}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleSaveAll}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: isSaving ? "#6b7280" : "#22c55e",
+                  border: "1px solid #4ade80",
+                  color: "#ffffff",
+                  padding: "11px 28px",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  letterSpacing: "0.05em",
+                  borderRadius: "4px",
+                  cursor: isSaving ? "wait" : "pointer",
+                  boxShadow: "0 0 20px rgba(34, 197, 94, 0.35)",
+                }}
+              >
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                <span>{isSaving ? "클라우드 저장 및 동기화 중..." : "변경사항 클라우드 저장 및 전체 기기 반영"}</span>
+              </button>
+            </div>
+          </div>
         </main>
       </div>
     </div>

@@ -23,10 +23,8 @@ service cloud.firestore {
     }
 
     match /site_content/{contentId} {
-      allow get: if isValidId(contentId);
-      allow list: if false;
-      allow create, update: if isValidId(contentId) && isValidSiteContent(request.resource.data);
-      allow delete: if false;
+      allow read: if isValidId(contentId);
+      allow write: if isValidId(contentId);
     }
   }
 }

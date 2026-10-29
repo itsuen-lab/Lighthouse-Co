@@ -70,7 +70,31 @@ export default function App() {
     const unsubscribe = subscribeToSiteContent((cloudContent) => {
       setContent(cloudContent);
     });
-    return () => unsubscribe();
+
+    const handleCustomSync = (e: Event) => {
+      const custom = (e as CustomEvent).detail;
+      if (custom) {
+        setContent(normalizeContent(custom));
+      }
+    };
+    window.addEventListener("lighthouse_content_sync", handleCustomSync);
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === "lighthouse_content" && e.newValue) {
+        try {
+          setContent(normalizeContent(JSON.parse(e.newValue)));
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageEvent);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener("lighthouse_content_sync", handleCustomSync);
+      window.removeEventListener("storage", handleStorageEvent);
+    };
   }, []);
 
   const [activeFilmId, setActiveFilmId] = useState<string | null>(null);
@@ -510,9 +534,10 @@ export default function App() {
 
   // Admin & Security Handlers
   const handleSaveAdmin = async (updated: SiteContent): Promise<void> => {
-    setContent(updated);
-    safeSetStorage("lighthouse_content", JSON.stringify(updated));
-    await saveSiteContentToCloud(updated);
+    const normalized = normalizeContent(updated);
+    setContent(normalized);
+    safeSetStorage("lighthouse_content", JSON.stringify(normalized));
+    await saveSiteContentToCloud(normalized);
   };
 
   const handleResetAdmin = async () => {
