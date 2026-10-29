@@ -4,7 +4,7 @@
  */
 
 import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType, auth } from "../firebase.ts";
+import { db, handleFirestoreError, OperationType } from "../firebase.ts";
 import { SiteContent, INITIAL_CONTENT, DEFAULT_NAV_ITEMS } from "../data/content.ts";
 
 export const CONTENT_DOC_PATH = "site_content/main";
@@ -103,53 +103,67 @@ export function subscribeToSiteContent(
   onUpdate: (content: SiteContent, isCloud: boolean) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const docRef = doc(db, "site_content", "main");
+  // 1. Immediately emit default or cached data synchronously so UI never shows a blank/loading screen
+  const immediateFallback = getStoredLocalContent() || INITIAL_CONTENT;
+  onUpdate(immediateFallback, false);
 
-  const unsubscribe = onSnapshot(
-    docRef,
-    (snapshot) => {
-      if (snapshot.exists()) {
-        const cloudData = snapshot.data();
-        const normalized = normalizeContent(cloudData);
+  try {
+    const docRef = doc(db, "site_content", "main");
 
-        // Sync local storage cache for instant paint across reloads
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
         try {
-          if (typeof window !== "undefined" && window.localStorage) {
-            window.localStorage.setItem("lighthouse_content", JSON.stringify(normalized));
-            window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: normalized }));
+          if (snapshot.exists()) {
+            const cloudData = snapshot.data();
+            const normalized = normalizeContent(cloudData);
+
+            // Sync local storage cache for instant paint across reloads
+            try {
+              if (typeof window !== "undefined" && window.localStorage) {
+                window.localStorage.setItem("lighthouse_content", JSON.stringify(normalized));
+                window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: normalized }));
+              }
+            } catch {
+              // ignore
+            }
+            onUpdate(normalized, true);
+          } else {
+            // Document doesn't exist yet on lighthouse-3bb68 Firestore
+            const fallback = getStoredLocalContent() || INITIAL_CONTENT;
+            onUpdate(fallback, false);
+
+            // Initial seed to Firestore so the document exists for all devices
+            const seedPayload = {
+              ...JSON.parse(JSON.stringify(fallback)),
+              featured: fallback.featured || INITIAL_CONTENT.featured,
+              films: fallback.films || INITIAL_CONTENT.films,
+              promos: fallback.promos || INITIAL_CONTENT.promos,
+              updatedAt: new Date().toISOString(),
+              updatedBy: "initial_setup",
+            };
+            setDoc(docRef, seedPayload, { merge: true }).catch((err) => {
+              console.info("Firestore auto-seed notice:", err?.message);
+            });
           }
-        } catch {
-          // ignore
+        } catch (procErr: any) {
+          console.warn("Error processing Firestore snapshot (using fallback):", procErr);
+          onUpdate(getStoredLocalContent() || INITIAL_CONTENT, false);
         }
-        onUpdate(normalized, true);
-      } else {
-        // Document doesn't exist yet on lighthouse-3bb68 Firestore
+      },
+      (error) => {
+        console.warn("Firestore subscription notice (using local data):", error?.message || error);
         const fallback = getStoredLocalContent() || INITIAL_CONTENT;
         onUpdate(fallback, false);
-
-        // Initial seed to Firestore so the document exists for all devices
-        const seedPayload = {
-          ...JSON.parse(JSON.stringify(fallback)),
-          featured: fallback.featured || INITIAL_CONTENT.featured,
-          films: fallback.films || INITIAL_CONTENT.films,
-          promos: fallback.promos || INITIAL_CONTENT.promos,
-          updatedAt: new Date().toISOString(),
-          updatedBy: "initial_setup",
-        };
-        setDoc(docRef, seedPayload, { merge: true }).catch((err) => {
-          console.info("Firestore auto-seed notice:", err?.message);
-        });
+        if (onError) onError(error);
       }
-    },
-    (error) => {
-      console.warn("Firestore subscription notice (using local data):", error?.message || error);
-      const fallback = getStoredLocalContent() || INITIAL_CONTENT;
-      onUpdate(fallback, false);
-      if (onError) onError(error);
-    }
-  );
+    );
 
-  return unsubscribe;
+    return unsubscribe;
+  } catch (err: any) {
+    console.warn("Firestore onSnapshot setup failed safely (using fallback):", err?.message || err);
+    return () => {};
+  }
 }
 
 export async function saveSiteContentToCloud(content: SiteContent): Promise<SiteContent> {
@@ -165,7 +179,7 @@ export async function saveSiteContentToCloud(content: SiteContent): Promise<Site
     films: cleanPayload.films || INITIAL_CONTENT.films,
     promos: cleanPayload.promos || INITIAL_CONTENT.promos,
     updatedAt: new Date().toISOString(),
-    updatedBy: auth.currentUser?.email || "admin",
+    updatedBy: "admin",
   };
 
   try {
@@ -213,3 +227,4 @@ export async function checkFirestoreStatus(): Promise<{ connected: boolean; film
     return { connected: false, filmCount: 0 };
   }
 }
+

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT } from "../data/content.ts";
-import { auth, googleProvider } from "../firebase.ts";
-import { signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
 import {
   Film as FilmIcon,
@@ -443,30 +441,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const [isSaving, setIsSaving] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setCurrentUser(u));
-    return () => unsub();
-  }, []);
-
-  const handleGoogleAdminLogin = async () => {
-    try {
-      const res = await signInWithPopup(auth, googleProvider);
-      const email = res.user.email?.toLowerCase();
-      if (email === "itsuen@gmail.com") {
-        showToast("Google 관리자(itsuen@gmail.com) 인증되었습니다.");
-      } else {
-        showToast(`주의: 승인되지 않은 계정입니다 (${email || "없음"})`);
-      }
-    } catch (err: any) {
-      if (err?.code === "auth/unauthorized-domain") {
-        showToast("현재 도메인은 Firebase OAuth 도메인 승인이 필요합니다. 관리자 비밀번호 인증을 통해 클라우드 저장이 정상 작동 중입니다.");
-      } else {
-        showToast("Google 로그인 실패: " + (err?.message || "오류"));
-      }
-    }
-  };
 
   // Save to parent & cloud
   const handleSaveAll = async () => {
@@ -605,26 +579,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
               <RefreshCw size={10} className={isSaving ? "animate-spin" : ""} />
               새로고침
             </button>
-            {!currentUser && (
-              <button
-                type="button"
-                onClick={handleGoogleAdminLogin}
-                title="Google 계정 추가 연동 (선택사항)"
-                style={{
-                  background: "rgba(255, 255, 255, 0.12)",
-                  color: "#fff",
-                  border: "1px solid rgba(255, 255, 255, 0.25)",
-                  padding: "2px 6px",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  borderRadius: "3px",
-                  marginLeft: "2px",
-                }}
-              >
-                Google 연동
-              </button>
-            )}
+
           </div>
 
           {lastSavedTime && (
