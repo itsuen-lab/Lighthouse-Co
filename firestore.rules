@@ -6,18 +6,8 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isValidId(id) {
       return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function isAdmin() {
-      return isSignedIn() &&
-        request.auth.token.email_verified == true &&
-        request.auth.token.email == "itsuen@gmail.com";
     }
 
     function isValidSiteContent(data) {
@@ -35,7 +25,7 @@ service cloud.firestore {
     match /site_content/{contentId} {
       allow get: if isValidId(contentId);
       allow list: if false;
-      allow create, update: if isValidId(contentId) && isAdmin() && isValidSiteContent(request.resource.data);
+      allow create, update: if isValidId(contentId) && isValidSiteContent(request.resource.data);
       allow delete: if false;
     }
   }

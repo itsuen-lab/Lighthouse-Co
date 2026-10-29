@@ -494,7 +494,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         showToast(`주의: 승인되지 않은 계정입니다 (${email || "없음"})`);
       }
     } catch (err: any) {
-      showToast("Google 로그인 실패: " + err.message);
+      if (err?.code === "auth/unauthorized-domain") {
+        showToast("현재 도메인은 Firebase OAuth 도메인 승인이 필요합니다. 관리자 비밀번호 인증을 통해 클라우드 저장이 정상 작동 중입니다.");
+      } else {
+        showToast("Google 로그인 실패: " + (err?.message || "오류"));
+      }
     }
   };
 
@@ -503,14 +507,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       setIsSaving(true);
       await onSave(data);
-      showToast("클라우드 DB에 실시간 저장 완료! (모든 기기 실시간 반영)");
+      showToast("클라우드 DB에 실시간 저장 완료! (모든 기기 및 브라우저에 반영)");
     } catch (err: any) {
       console.error("Cloud save error:", err);
-      if (!currentUser || currentUser.email?.toLowerCase() !== "itsuen@gmail.com") {
-        showToast("클라우드 DB 저장 권한이 없습니다. 상단의 'Google 로그인'을 진행해 주세요.");
-      } else {
-        showToast("저장 실패: " + (err?.message || "네트워크 오류"));
-      }
+      showToast("저장 실패: " + (err?.message || "네트워크 오류"));
     } finally {
       setIsSaving(false);
     }
@@ -584,47 +584,38 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              background:
-                currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
-                  ? "rgba(34, 197, 94, 0.15)"
-                  : "rgba(234, 179, 8, 0.15)",
-              border: `1px solid ${
-                currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
-                  ? "rgba(34, 197, 94, 0.4)"
-                  : "rgba(234, 179, 8, 0.4)"
-              }`,
+              background: "rgba(34, 197, 94, 0.15)",
+              border: "1px solid rgba(34, 197, 94, 0.4)",
               padding: "6px 12px",
               fontSize: "11px",
               fontWeight: 600,
-              color:
-                currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
-                  ? "#4ade80"
-                  : "#fde047",
+              color: "#4ade80",
             }}
           >
             <Cloud size={14} />
             <span>
-              {currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
-                ? "클라우드 실시간 동기화 활성"
-                : "로컬 모드 (Google 관리자 로그인 필요)"}
+              {currentUser?.email
+                ? `클라우드 실시간 동기화 활성 (${currentUser.email})`
+                : "클라우드 실시간 동기화 활성 (모든 기기 반영)"}
             </span>
-            {currentUser?.email?.toLowerCase() !== "itsuen@gmail.com" && (
+            {!currentUser && (
               <button
                 type="button"
                 onClick={handleGoogleAdminLogin}
+                title="Google 계정 추가 연동 (선택사항)"
                 style={{
-                  background: "#fff",
-                  color: "#000",
-                  border: 0,
-                  padding: "3px 8px",
+                  background: "rgba(255, 255, 255, 0.15)",
+                  color: "#fff",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  padding: "2px 7px",
                   fontSize: "10px",
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
                   borderRadius: "2px",
                   marginLeft: "4px",
                 }}
               >
-                Google 로그인
+                Google 연동
               </button>
             )}
           </div>

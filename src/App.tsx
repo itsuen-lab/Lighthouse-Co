@@ -958,6 +958,20 @@ export default function App() {
               </div>
 
               <div className="contact-links">
+                <div
+                  className="contact-plain-email"
+                  style={{
+                    padding: "24px 0",
+                    borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
+                    fontSize: "clamp(17px, 1.8vw, 26px)",
+                    fontWeight: 400,
+                    letterSpacing: "-0.02em",
+                    color: "#eae8e3",
+                    userSelect: "all",
+                  }}
+                >
+                  keeper@lighthouse.re.kr
+                </div>
                 <a
                   href={content.contact?.youtubeUrl || "https://www.youtube.com/channel/UCZGkkk92ozbMX4Zo3WYCSbg"}
                   rel="noopener noreferrer"
