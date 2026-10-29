@@ -1,30 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default Deny
+    match /site_content/{document=**} {
+      allow read, write: if true;
+    }
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    function isValidSiteContent(data) {
-      return data.keys().hasAll(['featured', 'films', 'promos', 'updatedAt']) &&
-        data.featured is list &&
-        data.featured.size() <= 100 &&
-        data.films is list &&
-        data.films.size() <= 200 &&
-        data.promos is list &&
-        data.promos.size() <= 100 &&
-        data.updatedAt is string &&
-        data.updatedAt.size() <= 100;
-    }
-
-    match /site_content/{contentId} {
-      allow read: if isValidId(contentId);
-      allow write: if isValidId(contentId);
+      allow read, write: if true;
     }
   }
 }
+

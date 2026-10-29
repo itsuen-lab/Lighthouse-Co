@@ -79,11 +79,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
   }, []);
 
-  // When content prop updates from real-time sync, update data if data was empty
+  // When content prop updates from real-time Firestore sync, update data
   useEffect(() => {
-    if (!data.films || data.films.length === 0) {
-      setData(normalizeContent(content));
-    }
+    setData(normalizeContent(content));
   }, [content]);
 
   const [activeTab, setActiveTab] = useState<TabType>("films");
@@ -451,9 +449,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setLastSavedTime(nowStr);
       showToast("✅ 클라우드 Firestore(lighthouse-3bb68)에 실시간 저장 완료! (모바일 및 모든 기기 즉시 반영)");
       checkFirestoreStatus().then((st) => setCloudStatus(st));
+
+      try {
+        window.alert("클라우드 저장 성공!");
+      } catch {
+        // Fallback if blocked
+      }
     } catch (err: any) {
       console.error("Cloud save error:", err);
-      showToast("❌ 저장 실패: " + (err?.message || "네트워크 오류"));
+      const errorMessage = err?.message || String(err) || "알 수 없는 에러";
+      showToast("❌ 저장 실패: " + errorMessage);
+
+      try {
+        window.alert("저장 실패 원인: " + errorMessage);
+      } catch {
+        // Fallback if blocked
+      }
     } finally {
       setIsSaving(false);
     }

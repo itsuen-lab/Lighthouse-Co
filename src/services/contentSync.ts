@@ -4,10 +4,13 @@
  */
 
 import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType } from "../firebase.ts";
+import { db } from "../firebase.ts";
 import { SiteContent, INITIAL_CONTENT, DEFAULT_NAV_ITEMS } from "../data/content.ts";
 
-export const CONTENT_DOC_PATH = "site_content/main";
+// 1. Unified Firestore Collection & Document Path (100% Identical for Read & Write)
+export const CONTENT_COLLECTION = "site_content";
+export const CONTENT_DOC_ID = "main";
+export const getContentDocRef = () => doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
 
 export function normalizeContent(raw: any): SiteContent {
   if (!raw || typeof raw !== "object") {
@@ -99,127 +102,116 @@ export function getStoredLocalContent(): SiteContent | null {
   return null;
 }
 
+/**
+ * Real-time Firestore subscription:
+ * - Listens directly to doc(db, 'site_content', 'main') via onSnapshot.
+ * - Firestore cloud data ALWAYS takes absolute top priority and overrides any local state as soon as it arrives.
+ */
 export function subscribeToSiteContent(
   onUpdate: (content: SiteContent, isCloud: boolean) => void,
   onError?: (err: Error) => void
 ): () => void {
-  // 1. Immediately and synchronously emit default or cached data (0.01s instant paint)
-  const immediateFallback = getStoredLocalContent() || INITIAL_CONTENT;
-  onUpdate(immediateFallback, false);
+  // Emit initial state so there is no blank screen while connecting
+  const fallback = getStoredLocalContent() || INITIAL_CONTENT;
+  onUpdate(fallback, false);
 
-  let unsubscribe: (() => void) | null = null;
-  let isMounted = true;
+  try {
+    const docRef = getContentDocRef();
 
-  // Defer Firestore connection slightly so the browser finishes initial paint & DOMContentLoaded instantly
-  const timerId = setTimeout(() => {
-    if (!isMounted) return;
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        try {
+          if (snapshot.exists()) {
+            const cloudData = snapshot.data();
+            if (cloudData && typeof cloudData === "object") {
+              const normalized = normalizeContent(cloudData);
 
-    try {
-      const docRef = doc(db, "site_content", "main");
-
-      unsubscribe = onSnapshot(
-        docRef,
-        (snapshot) => {
-          if (!isMounted) return;
-          try {
-            if (snapshot.exists()) {
-              const cloudData = snapshot.data();
-              if (cloudData && typeof cloudData === "object") {
-                const normalized = normalizeContent(cloudData);
-
-                // Sync local storage cache for instant paint across reloads
-                try {
-                  if (typeof window !== "undefined" && window.localStorage) {
-                    window.localStorage.setItem("lighthouse_content", JSON.stringify(normalized));
-                    window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: normalized }));
-                  }
-                } catch {
-                  // ignore
+              // Update cache
+              try {
+                if (typeof window !== "undefined" && window.localStorage) {
+                  window.localStorage.setItem("lighthouse_content", JSON.stringify(normalized));
+                  window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: normalized }));
                 }
-                onUpdate(normalized, true);
+              } catch {
+                // ignore
               }
-            } else {
-              // Document doesn't exist yet - keep showing local fallback data cleanly without auto-writing
-              const fallback = getStoredLocalContent() || INITIAL_CONTENT;
-              onUpdate(fallback, false);
-            }
-          } catch (procErr: any) {
-            console.warn("Firestore snapshot notice:", procErr);
-            onUpdate(getStoredLocalContent() || INITIAL_CONTENT, false);
-          }
-        },
-        (error) => {
-          console.warn("Firestore subscription notice (using local data):", error?.message || error);
-          const fallback = getStoredLocalContent() || INITIAL_CONTENT;
-          onUpdate(fallback, false);
-          if (onError) onError(error);
-        }
-      );
-    } catch (err: any) {
-      console.warn("Firestore setup notice:", err?.message || err);
-      const fallback = getStoredLocalContent() || INITIAL_CONTENT;
-      onUpdate(fallback, false);
-    }
-  }, 50);
 
-  return () => {
-    isMounted = false;
-    clearTimeout(timerId);
-    if (unsubscribe) {
-      unsubscribe();
-    }
-  };
+              // Overwrite with Firestore authoritative data
+              onUpdate(normalized, true);
+            }
+          } else {
+            console.info("Firestore site_content/main document does not exist yet.");
+          }
+        } catch (procErr: any) {
+          console.warn("Firestore snapshot processing error:", procErr);
+          if (onError) onError(procErr);
+        }
+      },
+      (error) => {
+        console.warn("Firestore onSnapshot error:", error);
+        if (onError) onError(error);
+      }
+    );
+
+    return unsubscribe;
+  } catch (err: any) {
+    console.error("Firestore onSnapshot initialization failed:", err);
+    if (onError) onError(err);
+    return () => {};
+  }
 }
 
+/**
+ * Saves content to Firestore doc(db, 'site_content', 'main'):
+ * - Uses JSON.parse(JSON.stringify(...)) to eliminate all `undefined` values that Firestore rejects.
+ * - Directly calls setDoc so errors (permission, quota, network) are thrown and visible to user.
+ */
 export async function saveSiteContentToCloud(content: SiteContent): Promise<SiteContent> {
-  const docRef = doc(db, "site_content", "main");
+  const docRef = getContentDocRef();
   const normalized = normalizeContent(content);
 
-  // Clean undefined properties safely
-  const cleanPayload = JSON.parse(JSON.stringify(normalized));
+  // 3. Remove all undefined values before saving to Firestore
+  const sanitized = JSON.parse(
+    JSON.stringify(normalized, (_key, value) => {
+      return value === undefined ? null : value;
+    })
+  );
 
   const payload = {
-    ...cleanPayload,
-    featured: cleanPayload.featured || INITIAL_CONTENT.featured,
-    films: cleanPayload.films || INITIAL_CONTENT.films,
-    promos: cleanPayload.promos || INITIAL_CONTENT.promos,
+    ...sanitized,
+    featured: sanitized.featured || INITIAL_CONTENT.featured,
+    films: sanitized.films || INITIAL_CONTENT.films,
+    promos: sanitized.promos || INITIAL_CONTENT.promos,
+    navItems: sanitized.navItems || DEFAULT_NAV_ITEMS,
     updatedAt: new Date().toISOString(),
     updatedBy: "admin",
   };
 
-  // Always save locally immediately for instant feedback
+  // Strict JSON deep-clean pass
+  const cleanPayload = JSON.parse(JSON.stringify(payload));
+
+  // Perform Firestore write
+  await setDoc(docRef, cleanPayload, { merge: true });
+
+  // Update local cache & notify other tabs
   try {
     if (typeof window !== "undefined" && window.localStorage) {
-      window.localStorage.setItem("lighthouse_content", JSON.stringify(payload));
-      window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: payload }));
+      window.localStorage.setItem("lighthouse_content", JSON.stringify(cleanPayload));
+      window.dispatchEvent(new CustomEvent("lighthouse_content_sync", { detail: cleanPayload }));
     }
   } catch {
     // ignore
   }
 
-  // Save to Firestore with a reasonable timeout so admin UI doesn't hang indefinitely on network issues
-  const savePromise = setDoc(docRef, payload, { merge: true });
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("네트워크 응답 시간 초과")), 8000)
-  );
-
-  try {
-    await Promise.race([savePromise, timeoutPromise]);
-    return payload;
-  } catch (error: any) {
-    console.error("Firestore saveSiteContentToCloud error:", error);
-    throw new Error(error?.message || "클라우드 저장소 통신 중 오류가 발생했습니다.");
-  }
+  return cleanPayload;
 }
 
 export async function checkFirestoreStatus(): Promise<{ connected: boolean; filmCount: number; updatedAt?: string }> {
   try {
-    const docRef = doc(db, "site_content", "main");
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), 2500)
-    );
-    const snap = await Promise.race([getDoc(docRef), timeoutPromise]);
-    if (snap && snap.exists()) {
+    const docRef = getContentDocRef();
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
       const d = snap.data();
       return {
         connected: true,
@@ -228,8 +220,8 @@ export async function checkFirestoreStatus(): Promise<{ connected: boolean; film
       };
     }
     return { connected: true, filmCount: 0 };
-  } catch {
+  } catch (err) {
+    console.warn("checkFirestoreStatus error:", err);
     return { connected: false, filmCount: 0 };
   }
 }
-
