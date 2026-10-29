@@ -3,17 +3,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAnalytics, isSupported } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
-import firebaseConfig from "../firebase-applet-config.json";
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+export const firebaseConfig = {
+  apiKey: "AIzaSyCSXTFSvq9oGl_2jfBjZiDmSjrBn--TDug",
+  authDomain: "lighthouse-3bb68.firebaseapp.com",
+  projectId: "lighthouse-3bb68",
+  storageBucket: "lighthouse-3bb68.firebasestorage.app",
+  messagingSenderId: "524933538951",
+  appId: "1:524933538951:web:302ef1a1608119dfdd4422",
+  measurementId: "G-CCX4NG5XGL",
+};
 
-// CRITICAL: Must pass firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firebase
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Firestore & Auth on user's project
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Analytics safely
+export let analytics: any = null;
+if (typeof window !== "undefined") {
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch(() => {
+      // Analytics is optional and might be blocked by ad blockers or sandboxed iframes
+    });
+}
 
 export enum OperationType {
   CREATE = "create",
@@ -66,16 +91,3 @@ export function handleFirestoreError(
   console.error("Firestore Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-
-// Connection test as required by skill
-export async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, "test", "connection"));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.error("Please check your Firebase configuration.");
-    }
-  }
-}
-
-testConnection();

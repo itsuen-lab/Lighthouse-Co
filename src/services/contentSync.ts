@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType, auth } from "../firebase.ts";
 import { SiteContent, INITIAL_CONTENT, DEFAULT_NAV_ITEMS } from "../data/content.ts";
 
@@ -59,6 +59,20 @@ export function normalizeContent(raw: any): SiteContent {
   return base;
 }
 
+function getStoredLocalContent(): SiteContent | null {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const saved = window.localStorage.getItem("lighthouse_content");
+      if (saved) {
+        return normalizeContent(JSON.parse(saved));
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export function subscribeToSiteContent(
   onUpdate: (content: SiteContent, isCloud: boolean) => void,
   onError?: (err: Error) => void
@@ -71,7 +85,7 @@ export function subscribeToSiteContent(
       if (snapshot.exists()) {
         const cloudData = snapshot.data();
         const normalized = normalizeContent(cloudData);
-        // Cache in localStorage for instant initial load on this device
+        // Sync local storage cache for instant offline or initial paint
         try {
           if (typeof window !== "undefined" && window.localStorage) {
             window.localStorage.setItem("lighthouse_content", JSON.stringify(normalized));
@@ -81,14 +95,28 @@ export function subscribeToSiteContent(
         }
         onUpdate(normalized, true);
       } else {
-        // Doc doesn't exist yet in cloud; use local or initial
-        onUpdate(INITIAL_CONTENT, false);
+        // Document doesn't exist yet on lighthouse-3bb68 Firestore
+        // Use existing local cache or initial defaults
+        const fallback = getStoredLocalContent() || INITIAL_CONTENT;
+        onUpdate(fallback, false);
+
+        // Attempt initial seed to Firestore so the document exists for all devices
+        const seedPayload = {
+          ...JSON.parse(JSON.stringify(fallback)),
+          featured: fallback.featured || [],
+          films: fallback.films || [],
+          promos: fallback.promos || [],
+          updatedAt: new Date().toISOString(),
+          updatedBy: "initial_setup",
+        };
+        setDoc(docRef, seedPayload).catch((err) => {
+          console.info("Firestore auto-seed notice (waiting for admin save or rules):", err?.message);
+        });
       }
     },
     (error) => {
-      console.warn("Firestore subscription notice (using local cache):", error);
+      console.warn("Firestore subscription notice (using local data):", error?.message || error);
       if (onError) onError(error);
-      handleFirestoreError(error, OperationType.GET, "site_content/main");
     }
   );
 
@@ -101,6 +129,9 @@ export async function saveSiteContentToCloud(content: SiteContent): Promise<void
 
   const payload = {
     ...cleanPayload,
+    featured: cleanPayload.featured || [],
+    films: cleanPayload.films || [],
+    promos: cleanPayload.promos || [],
     updatedAt: new Date().toISOString(),
     updatedBy: auth.currentUser?.email || "admin",
   };
@@ -117,5 +148,16 @@ export async function saveSiteContentToCloud(content: SiteContent): Promise<void
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "site_content/main");
+  }
+}
+
+export async function checkFirestoreStatus(): Promise<boolean> {
+  try {
+    const docRef = doc(db, "site_content", "main");
+    await getDoc(docRef);
+    return true;
+  } catch (err) {
+    console.warn("Firestore status check:", err);
+    return false;
   }
 }
