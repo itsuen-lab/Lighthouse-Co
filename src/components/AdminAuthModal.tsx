@@ -157,7 +157,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               <input
                 autoFocus
                 type={showPassword ? "text" : "password"}
-                placeholder="비밀번호 입력 (기본: lighthouse2026)"
+                placeholder="비밀번호 입력 (기본: 1234)"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -193,7 +193,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               </button>
             </div>
             <div style={{ fontSize: "11px", color: "#666", marginTop: "6px" }}>
-              초기 기본 비밀번호: <code>lighthouse2026</code>
+              초기 기본 비밀번호: <code>1234</code>
             </div>
           </div>
 

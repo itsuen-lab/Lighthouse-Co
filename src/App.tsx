@@ -104,7 +104,7 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string>(() => {
-    return safeGetStorage("lh_admin_pw") || "lighthouse2026";
+    return safeGetStorage("lh_admin_pw") || "1234";
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return safeGetStorage("lh_is_authenticated") === "true";
