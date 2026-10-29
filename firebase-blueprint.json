@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "Global website content configuration containing films, promos, hero slides, and contact info",
+      "type": "object",
+      "properties": {
+        "featured": {
+          "type": "array",
+          "description": "List of featured film or promo IDs for the hero slider"
+        },
+        "promosVisible": {
+          "type": "boolean",
+          "description": "Whether promo cards section is visible on main screen"
+        },
+        "films": {
+          "type": "array",
+          "description": "List of film objects"
+        },
+        "promos": {
+          "type": "array",
+          "description": "List of promo card objects"
+        },
+        "navItems": {
+          "type": "array",
+          "description": "Header navigation items"
+        },
+        "director": {
+          "type": "object",
+          "description": "Director quote and photo section"
+        },
+        "contact": {
+          "type": "object",
+          "description": "Contact info, links, and inquiry form endpoint"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Email address of the admin who made the update"
+        }
+      },
+      "required": ["featured", "films", "promos", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/site_content/{contentId}": {
+      "schema": "SiteContent",
+      "description": "Global site content documents"
+    }
+  }
+}

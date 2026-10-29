@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem } from "./data/content.ts";
+import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
 import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { AdminPanel } from "./components/AdminPanel.tsx";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
@@ -51,55 +52,6 @@ function safeRemoveStorage(key: string): void {
   }
 }
 
-function normalizeContent(raw: any): SiteContent {
-  const base: SiteContent = { ...INITIAL_CONTENT, ...raw };
-  if (!Array.isArray(base.promos) || base.promos.length === 0) {
-    if (raw && raw.promo) {
-      base.promos = [
-        {
-          id: "promo-1",
-          badgeTopLeft: "LIGHTHOUSE / FEATURED PROJECT",
-          badgeTopRight: "01 — SPECIAL PROJECT",
-          kicker: "EXPLORE BEYOND THE SCREEN",
-          titleLines: raw.promo.titleLines || ["Objects &", "Moving Images."],
-          subtitle: raw.promo.subtitle || "영화 밖에서 이어지는 새로운 경험",
-          ctaText: "STORE / EXPLORE",
-          url: raw.promo.url || "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
-          image: raw.promo.image || "/images/promo-example.jpg",
-        },
-      ];
-    } else {
-      base.promos = INITIAL_CONTENT.promos;
-    }
-  }
-  if (Array.isArray(base.films)) {
-    base.films = base.films.map((f) => {
-      if (f.id === "celine" && (!f.posterImage || f.posterImage.includes("images.unsplash.com/photo-1485846234645"))) {
-        return { ...f, posterImage: "/assets/aistudio/___________________________________________2_5ecc6cfd.jpg" };
-      }
-      return f;
-    });
-  }
-  if (!Array.isArray(base.navItems) || base.navItems.length === 0) {
-    base.navItems = DEFAULT_NAV_ITEMS;
-  }
-  if (base.promosVisible === undefined) {
-    base.promosVisible = true;
-  }
-  if (Array.isArray(base.promos)) {
-    base.promos = base.promos.map((p) => ({
-      ...p,
-      visible: p.visible !== false,
-    }));
-  }
-  if (!base.contact) {
-    base.contact = INITIAL_CONTENT.contact;
-  } else {
-    base.contact = { ...INITIAL_CONTENT.contact, ...base.contact };
-  }
-  return base;
-}
-
 export default function App() {
   const [content, setContent] = useState<SiteContent>(() => {
     const saved = safeGetStorage("lighthouse_content");
@@ -112,6 +64,14 @@ export default function App() {
     }
     return INITIAL_CONTENT;
   });
+
+  // Real-time Cloud DB synchronization across all browsers and devices
+  useEffect(() => {
+    const unsubscribe = subscribeToSiteContent((cloudContent) => {
+      setContent(cloudContent);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const [activeFilmId, setActiveFilmId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(7);
@@ -549,14 +509,22 @@ export default function App() {
   };
 
   // Admin & Security Handlers
-  const handleSaveAdmin = (updated: SiteContent) => {
+  const handleSaveAdmin = async (updated: SiteContent): Promise<void> => {
     setContent(updated);
     safeSetStorage("lighthouse_content", JSON.stringify(updated));
+    await saveSiteContentToCloud(updated);
   };
 
-  const handleResetAdmin = () => {
-    setContent(INITIAL_CONTENT);
-    safeRemoveStorage("lighthouse_content");
+  const handleResetAdmin = async () => {
+    if (confirm("사이트 데이터를 초기 샘플 상태로 복원하시겠습니까? 클라우드 데이터도 초기화됩니다.")) {
+      setContent(INITIAL_CONTENT);
+      safeRemoveStorage("lighthouse_content");
+      try {
+        await saveSiteContentToCloud(INITIAL_CONTENT);
+      } catch (err) {
+        console.warn("Cloud reset notice:", err);
+      }
+    }
   };
 
   const handleCloseAdmin = () => {

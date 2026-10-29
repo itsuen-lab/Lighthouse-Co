@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo } from "../data/content.ts";
+import { auth, googleProvider } from "../firebase.ts";
+import { signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
 import {
   Film as FilmIcon,
   Quote,
@@ -16,17 +18,20 @@ import {
   ExternalLink,
   Star,
   Eye,
+  EyeOff,
   ShieldCheck,
   LogOut,
   ArrowUp,
   ArrowDown,
   Compass,
   Link2,
+  Cloud,
+  Loader2,
 } from "lucide-react";
 
 interface AdminPanelProps {
   content: SiteContent;
-  onSave: (updated: SiteContent) => void;
+  onSave: (updated: SiteContent) => Promise<boolean | void> | void;
   onClose: () => void;
   onReset: () => void;
   onLogout: () => void;
@@ -92,6 +97,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           },
         ];
       }
+    }
+    if (copy.promosVisible === undefined) {
+      copy.promosVisible = true;
+    }
+    if (Array.isArray(copy.promos)) {
+      copy.promos = copy.promos.map((p) => ({
+        ...p,
+        visible: p.visible !== false,
+      }));
     }
     if (!Array.isArray(copy.navItems) || copy.navItems.length === 0) {
       copy.navItems = DEFAULT_NAV_ITEMS;
@@ -403,6 +417,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       ctaText: "STORE / EXPLORE",
       url: "mailto:keeper@lighthouse.re.kr?subject=Special%20Project",
       image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80",
+      visible: true,
     };
 
     setData((prev) => ({
@@ -438,10 +453,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
   };
 
-  // Save to parent
-  const handleSaveAll = () => {
-    onSave(data);
-    showToast("모든 변경 사항이 사이트에 저장 및 적용되었습니다.");
+  const handleTogglePromoSectionVisibility = () => {
+    setData((prev) => {
+      const next = prev.promosVisible === false ? true : false;
+      showToast(`메인화면 프로모션 카드 섹션이 ${next ? "노출" : "전체 숨김"} 처리되었습니다.`);
+      return { ...prev, promosVisible: next };
+    });
+  };
+
+  const handleTogglePromoCardVisibility = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setData((prev) => {
+      const nextPromos = (prev.promos || []).map((p) => {
+        if (p.id === id) {
+          const nextVal = p.visible === false ? true : false;
+          showToast(`해당 프로모션 카드가 메인화면에서 ${nextVal ? "노출" : "숨김"} 처리되었습니다.`);
+          return { ...p, visible: nextVal };
+        }
+        return p;
+      });
+      return { ...prev, promos: nextPromos };
+    });
+  };
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setCurrentUser(u));
+    return () => unsub();
+  }, []);
+
+  const handleGoogleAdminLogin = async () => {
+    try {
+      const res = await signInWithPopup(auth, googleProvider);
+      const email = res.user.email?.toLowerCase();
+      if (email === "itsuen@gmail.com") {
+        showToast("Google 관리자(itsuen@gmail.com) 인증되었습니다.");
+      } else {
+        showToast(`주의: 승인되지 않은 계정입니다 (${email || "없음"})`);
+      }
+    } catch (err: any) {
+      showToast("Google 로그인 실패: " + err.message);
+    }
+  };
+
+  // Save to parent & cloud
+  const handleSaveAll = async () => {
+    try {
+      setIsSaving(true);
+      await onSave(data);
+      showToast("클라우드 DB에 실시간 저장 완료! (모든 기기 실시간 반영)");
+    } catch (err: any) {
+      console.error("Cloud save error:", err);
+      if (!currentUser || currentUser.email?.toLowerCase() !== "itsuen@gmail.com") {
+        showToast("클라우드 DB 저장 권한이 없습니다. 상단의 'Google 로그인'을 진행해 주세요.");
+      } else {
+        showToast("저장 실패: " + (err?.message || "네트워크 오류"));
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Generate content.js code
@@ -506,6 +578,57 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {/* Cloud Sync Status */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background:
+                currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
+                  ? "rgba(34, 197, 94, 0.15)"
+                  : "rgba(234, 179, 8, 0.15)",
+              border: `1px solid ${
+                currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
+                  ? "rgba(34, 197, 94, 0.4)"
+                  : "rgba(234, 179, 8, 0.4)"
+              }`,
+              padding: "6px 12px",
+              fontSize: "11px",
+              fontWeight: 600,
+              color:
+                currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
+                  ? "#4ade80"
+                  : "#fde047",
+            }}
+          >
+            <Cloud size={14} />
+            <span>
+              {currentUser?.email?.toLowerCase() === "itsuen@gmail.com"
+                ? "클라우드 실시간 동기화 활성"
+                : "로컬 모드 (Google 관리자 로그인 필요)"}
+            </span>
+            {currentUser?.email?.toLowerCase() !== "itsuen@gmail.com" && (
+              <button
+                type="button"
+                onClick={handleGoogleAdminLogin}
+                style={{
+                  background: "#fff",
+                  color: "#000",
+                  border: 0,
+                  padding: "3px 8px",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  borderRadius: "2px",
+                  marginLeft: "4px",
+                }}
+              >
+                Google 로그인
+              </button>
+            )}
+          </div>
+
           {toastMessage && (
             <span
               style={{
@@ -545,23 +668,25 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
 
           <button
             type="button"
+            disabled={isSaving}
             onClick={handleSaveAll}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              background: "#f1f1ee",
+              background: isSaving ? "#ccc" : "#f1f1ee",
               border: "1px solid #fff",
               color: "#111",
               padding: "9px 22px",
               fontSize: "11px",
               fontWeight: 800,
               letterSpacing: "0.1em",
-              cursor: "pointer",
+              cursor: isSaving ? "wait" : "pointer",
+              opacity: isSaving ? 0.7 : 1,
             }}
           >
-            <Check size={14} />
-            적용 및 저장
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            {isSaving ? "저장 및 동기화 중..." : "적용 및 저장"}
           </button>
 
           <button
@@ -2421,6 +2546,64 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   </button>
                 </div>
 
+                {/* Promo Section Main Screen Visibility Banner */}
+                <div
+                  style={{
+                    background: data.promosVisible !== false ? "rgba(34, 197, 94, 0.08)" : "rgba(239, 68, 68, 0.08)",
+                    border: data.promosVisible !== false ? "1px solid rgba(34, 197, 94, 0.25)" : "1px solid rgba(239, 68, 68, 0.25)",
+                    padding: "16px 20px",
+                    marginBottom: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        background: data.promosVisible !== false ? "rgba(34, 197, 94, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: data.promosVisible !== false ? "#4ade80" : "#f87171",
+                      }}
+                    >
+                      {data.promosVisible !== false ? <Eye size={18} /> : <EyeOff size={18} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "14px", fontWeight: 600, color: data.promosVisible !== false ? "#4ade80" : "#f87171" }}>
+                        메인화면 Promo Cards 섹션 노출: {data.promosVisible !== false ? "노출 중 (ON)" : "전체 숨김 (OFF)"}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+                        {data.promosVisible !== false
+                          ? "메인화면 ABOUT 섹션 하단에 프로모션 카드들이 정상적으로 노출됩니다."
+                          : "메인화면에서 프로모션 카드 섹션 전체가 숨겨집니다. (메인 Hero 슬라이드에 지정된 카드는 Hero 슬라이드로 유지됩니다.)"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleTogglePromoSectionVisibility}
+                    style={{
+                      background: data.promosVisible !== false ? "#1f2937" : "rgba(34, 197, 94, 0.2)",
+                      border: `1px solid ${data.promosVisible !== false ? "rgba(255,255,255,0.2)" : "rgba(34, 197, 94, 0.5)"}`,
+                      color: data.promosVisible !== false ? "#fff" : "#4ade80",
+                      padding: "8px 16px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {data.promosVisible !== false ? "섹션 전체 숨기기" : "섹션 노출하기"}
+                  </button>
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: "32px", alignItems: "start" }}>
                   {/* Left: Promo Cards List */}
                   <div
@@ -2462,6 +2645,47 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                               >
                                 {card.badgeTopRight || `0${idx + 1}`}
                               </span>
+                              {card.visible === false ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleTogglePromoCardVisibility(card.id, e)}
+                                  title="클릭하여 메인화면에 노출"
+                                  style={{
+                                    fontSize: "9px",
+                                    fontWeight: 800,
+                                    letterSpacing: "0.08em",
+                                    color: "#9ca3af",
+                                    background: "rgba(156, 163, 175, 0.15)",
+                                    border: "1px solid rgba(156, 163, 175, 0.3)",
+                                    padding: "1px 5px",
+                                    borderRadius: "2px",
+                                    whiteSpace: "nowrap",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  숨김
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleTogglePromoCardVisibility(card.id, e)}
+                                  title="클릭하여 메인화면에서 숨김"
+                                  style={{
+                                    fontSize: "9px",
+                                    fontWeight: 800,
+                                    letterSpacing: "0.08em",
+                                    color: "#4ade80",
+                                    background: "rgba(34, 197, 94, 0.15)",
+                                    border: "1px solid rgba(34, 197, 94, 0.3)",
+                                    padding: "1px 5px",
+                                    borderRadius: "2px",
+                                    whiteSpace: "nowrap",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  노출
+                                </button>
+                              )}
                               {isItemFeatured("promo", card.id) && (
                                 <span
                                   title="메인 Hero 슬라이드에 포함됨"
@@ -2570,6 +2794,28 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                           <button
                             type="button"
+                            onClick={() => handleTogglePromoCardVisibility(activePromo.id)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              background: activePromo.visible !== false ? "rgba(34, 197, 94, 0.15)" : "rgba(107, 114, 128, 0.2)",
+                              border: `1px solid ${
+                                activePromo.visible !== false ? "rgba(34, 197, 94, 0.5)" : "rgba(255,255,255,0.2)"
+                              }`,
+                              color: activePromo.visible !== false ? "#4ade80" : "#9ca3af",
+                              padding: "7px 14px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {activePromo.visible !== false ? <Eye size={13} /> : <EyeOff size={13} />}
+                            {activePromo.visible !== false ? "메인 노출 중" : "메인 숨김 상태"}
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => toggleFeaturedItem("promo", activePromo.id)}
                             style={{
                               display: "flex",
@@ -2580,8 +2826,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                 : "#1e1e1e",
                               border: `1px solid ${
                                 isItemFeatured("promo", activePromo.id)
-                                  ? "rgba(168, 85, 247, 0.6)"
-                                  : "rgba(255,255,255,0.2)"
+                                ? "rgba(168, 85, 247, 0.6)"
+                                : "rgba(255,255,255,0.2)"
                               }`,
                               color: isItemFeatured("promo", activePromo.id) ? "#c084fc" : "#ccc",
                               padding: "7px 14px",
@@ -2614,6 +2860,80 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                           >
                             <Trash2 size={13} />
                             카드 삭제
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card Visibility Toggle Banner */}
+                      <div
+                        style={{
+                          background: activePromo.visible !== false ? "rgba(34, 197, 94, 0.08)" : "rgba(107, 114, 128, 0.08)",
+                          border: `1px solid ${activePromo.visible !== false ? "rgba(34, 197, 94, 0.3)" : "rgba(255, 255, 255, 0.12)"}`,
+                          padding: "14px 18px",
+                          marginBottom: "24px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "16px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div
+                            style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "4px",
+                              background: activePromo.visible !== false ? "rgba(34, 197, 94, 0.18)" : "rgba(107, 114, 128, 0.2)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: activePromo.visible !== false ? "#4ade80" : "#9ca3af",
+                            }}
+                          >
+                            {activePromo.visible !== false ? <Eye size={16} /> : <EyeOff size={16} />}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: activePromo.visible !== false ? "#4ade80" : "#d1d5db" }}>
+                              이 카드의 메인화면 노출 상태: {activePromo.visible !== false ? "노출 중 (ON)" : "숨김 (OFF)"}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
+                              {activePromo.visible !== false
+                                ? "메인화면 ABOUT 섹션 하단의 Promo Cards 목록에 이 카드가 정상 노출됩니다."
+                                : "메인화면 Promo Cards 목록에서 이 카드가 제외(숨김)됩니다."}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button
+                            type="button"
+                            onClick={() => handlePromoChange(activePromo.id, "visible", true)}
+                            style={{
+                              background: activePromo.visible !== false ? "#166534" : "#1f2937",
+                              border: `1px solid ${activePromo.visible !== false ? "#22c55e" : "rgba(255,255,255,0.15)"}`,
+                              color: activePromo.visible !== false ? "#fff" : "#9ca3af",
+                              padding: "6px 14px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            노출 (ON)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePromoChange(activePromo.id, "visible", false)}
+                            style={{
+                              background: activePromo.visible === false ? "#4b5563" : "#1f2937",
+                              border: `1px solid ${activePromo.visible === false ? "#9ca3af" : "rgba(255,255,255,0.15)"}`,
+                              color: activePromo.visible === false ? "#fff" : "#9ca3af",
+                              padding: "6px 14px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            숨김 (OFF)
                           </button>
                         </div>
                       </div>

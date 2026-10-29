@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email == "itsuen@gmail.com";
+    }
+
+    function isValidSiteContent(data) {
+      return data.keys().hasAll(['featured', 'films', 'promos', 'updatedAt']) &&
+        data.featured is list &&
+        data.featured.size() <= 100 &&
+        data.films is list &&
+        data.films.size() <= 200 &&
+        data.promos is list &&
+        data.promos.size() <= 100 &&
+        data.updatedAt is string &&
+        data.updatedAt.size() <= 100;
+    }
+
+    match /site_content/{contentId} {
+      allow get: if isValidId(contentId);
+      allow list: if false;
+      allow create, update: if isValidId(contentId) && isAdmin() && isValidSiteContent(request.resource.data);
+      allow delete: if false;
+    }
+  }
+}
