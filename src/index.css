@@ -85,7 +85,7 @@ button:focus-visible {
 .identity {
   display: flex;
   align-items: center;
-  gap: 23px;
+  gap: 26px;
 }
 
 .logo {
