@@ -145,7 +145,7 @@ export default function App() {
 
   // Hover poster magnetic state
   const [posterVisible, setPosterVisible] = useState(false);
-  const [posterSrc, setPosterSrc] = useState<string>(() => resolveAssetUrl("/images/sample-poster.jpg"));
+  const [posterSrc, setPosterSrc] = useState<string>("");
   const posterRef = useRef<HTMLDivElement>(null);
   const posterPosRef = useRef({
     curX: 0,
@@ -730,8 +730,8 @@ export default function App() {
           id="home"
         >
           {finalHeroSlides.map((slide, index) => {
-            const fallbackImg = resolveAssetUrl(`/images/hero-fallback-${(index % 3) + 1}.jpg`);
             const isFilm = slide.type === "film";
+            const slideImg = resolveAssetUrl(slide.image);
 
             return (
               <section
@@ -743,17 +743,19 @@ export default function App() {
                 style={{ zIndex: index + 1, "--z": index + 1 } as React.CSSProperties}
               >
                 <div className="bg-wrapper">
-                  <img
-                    alt=""
-                    className="bg"
-                    loading={index === 0 ? "eager" : "lazy"}
-                    src={resolveAssetUrl(slide.image) || fallbackImg}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.onerror = null;
-                      img.src = fallbackImg;
-                    }}
-                  />
+                  {slideImg ? (
+                    <img
+                      alt=""
+                      className="bg"
+                      loading={index === 0 ? "eager" : "lazy"}
+                      src={slideImg}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.onerror = null;
+                        img.style.opacity = "0";
+                      }}
+                    />
+                  ) : null}
                 </div>
 
                 <div className="film-position">
@@ -942,16 +944,18 @@ export default function App() {
                     className="promo-card"
                     href={item.url}
                   >
-                    <img
-                      alt="Abstract monochrome beam of light, campaign image"
-                      className="promo-photo"
-                      src={resolveAssetUrl(item.image) || resolveAssetUrl("/images/promo-example.jpg")}
-                      onError={(e) => {
-                        const img = e.currentTarget;
-                        img.onerror = null;
-                        img.src = resolveAssetUrl("/images/promo-example.svg");
-                      }}
-                    />
+                    {item.image ? (
+                      <img
+                        alt="LIGHTHOUSE FEATURED PROJECT"
+                        className="promo-photo"
+                        src={resolveAssetUrl(item.image)}
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.onerror = null;
+                          img.style.opacity = "0";
+                        }}
+                      />
+                    ) : null}
                     <div className="promo-shade" />
                     <div className="promo-header">
                       <span>{item.badgeTopLeft || "LIGHTHOUSE / FEATURED PROJECT"}</span>
@@ -1292,16 +1296,18 @@ export default function App() {
           <div className="byline">
             A FILM BY {activeFilm.director.toUpperCase()} · {activeFilm.year}
           </div>
-          <img
-            alt={activeFilm.title}
-            className="still"
-            src={resolveAssetUrl(activeFilm.heroImage) || resolveAssetUrl("/images/hero-fallback-1.jpg")}
-            onError={(e) => {
-              const img = e.currentTarget;
-              img.onerror = null;
-              img.src = resolveAssetUrl("/images/hero-fallback-1.jpg");
-            }}
-          />
+          {activeFilm.heroImage ? (
+            <img
+              alt={activeFilm.title}
+              className="still"
+              src={resolveAssetUrl(activeFilm.heroImage)}
+              onError={(e) => {
+                const img = e.currentTarget;
+                img.onerror = null;
+                img.style.opacity = "0";
+              }}
+            />
+          ) : null}
 
           {/* Media Showcase: Left Poster & Right Playable YouTube Trailer (both optional) */}
           {(() => {

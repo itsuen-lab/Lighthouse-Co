@@ -216,18 +216,20 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
               title={`${item.title} — 상세보기`}
             >
               <div className="artwork-poster-frame">
-                <img
-                  alt={`${item.title} artwork poster`}
-                  className="artwork-poster-img"
-                  loading={index < 3 ? "eager" : "lazy"}
-                  src={resolveAssetUrl(item.imageUrl) || resolveAssetUrl("/images/sample-poster.jpg")}
-                  draggable={false}
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    target.onerror = null;
-                    target.src = resolveAssetUrl("/images/sample-poster.jpg");
-                  }}
-                />
+                {item.imageUrl ? (
+                  <img
+                    alt={`${item.title} artwork poster`}
+                    className="artwork-poster-img"
+                    loading={index < 3 ? "eager" : "lazy"}
+                    src={resolveAssetUrl(item.imageUrl)}
+                    draggable={false}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.onerror = null;
+                      target.style.opacity = "0";
+                    }}
+                  />
+                ) : null}
               </div>
 
               {/* English Film Title on top, English Director and Designed by on the bottom row */}

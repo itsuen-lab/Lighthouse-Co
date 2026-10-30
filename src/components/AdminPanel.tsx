@@ -4086,7 +4086,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         <input
                           type="text"
                           value={activePromo.image || ""}
-                          placeholder="/images/promo-example.jpg 또는 https://..."
+                          placeholder="https://... 또는 이미지 URL"
                           onChange={(e) => handlePromoChange(activePromo.id, "image", e.target.value)}
                           style={{
                             width: "100%",

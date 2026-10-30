@@ -248,7 +248,7 @@ export const INITIAL_CONTENT: SiteContent = {
     quote: "감독의 코멘트를 이곳에 담습니다. 한 문장 한 문장이 오래 머무를 수 있도록."
   },
   promo: {
-    image: "/images/promo-example.jpg",
+    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80",
     titleLines: ["Objects &", "Moving Images."],
     subtitle: "영화 밖에서 이어지는 새로운 경험",
     url: "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry"
@@ -263,7 +263,7 @@ export const INITIAL_CONTENT: SiteContent = {
       subtitle: "영화 밖에서 이어지는 새로운 경험",
       ctaText: "STORE / EXPLORE",
       url: "mailto:keeper@lighthouse.re.kr?subject=Lighthouse%20Store%20Inquiry",
-      image: "/images/promo-example.jpg",
+      image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80",
       visible: true,
     }
   ],
