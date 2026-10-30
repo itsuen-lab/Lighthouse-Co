@@ -164,7 +164,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
       <div className="artworks-header">
         <div className="artworks-header-left">
           <h2>ARTWORKS.</h2>
-          <small>ORIGINAL POSTERS & VISUAL ARCHIVE ↘</small>
+          <small>LIGHTHOUSE ORIGINAL ARTWORKS & ARCHIVE ↘</small>
         </div>
 
         <div className="artworks-controls">
