@@ -102,6 +102,8 @@ button:focus-visible {
   font-weight: 700;
   color: #ddd;
   white-space: nowrap;
+  position: relative;
+  left: 6px
 }
 
 .nav {
