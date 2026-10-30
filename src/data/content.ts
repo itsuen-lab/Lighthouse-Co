@@ -97,7 +97,7 @@ export const INITIAL_CONTENT: SiteContent = {
       release: "2026.05.27",
       director: "Shinji Aoyama",
       year: "2000",
-      heroImage: "https://drive.google.com/thumbnail?id=13A-OeJ7LJQxtgHW0JsrLsspojmDBxEa8&sz=w2000",
+      heroImage: "https://drive.google.com/thumbnail?id=1kaPET4Qu-zpJ_r5rtHMt5xvtS5IBBarj&sz=w2000",
       posterImage: "https://drive.google.com/thumbnail?id=1Nc8OqleYK0kKQ29oKXmT7Ri30rJqRtni&sz=w2000",
       summary: "A journey of survival and connection across the landscapes of Kyushu.",
       summaryKo: "버스 납치 참사에서 살아남은 버스 기사와 두 남매. 세상으로부터 고립된 채 침묵 속에 머물던 이들이 낡은 버스를 타고 규슈의 광활한 대지를 횡단하며 서로의 상처를 보듬고 삶의 재출발을 향해 나아가는 장엄한 로드무비.",
