@@ -93,7 +93,7 @@ button:focus-visible {
   width: auto;
   max-width: 230px;
   object-fit: contain;
-  transform: translateY(-2px);
+  transform: translateY(-4px);
 }
 
 .location {
