@@ -101,8 +101,24 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-);
+function mountApp() {
+  const container = document.getElementById('root');
+  if (container) {
+    const root = createRoot(container);
+    root.render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
+  } else if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', mountApp, { once: true });
+  }
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountApp, { once: true });
+  } else {
+    mountApp();
+  }
+}

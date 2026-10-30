@@ -104,7 +104,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Film Handlers
-  const handleFilmChange = (id: string, field: keyof Film, value: string) => {
+  const handleFilmChange = (id: string, field: keyof Film, value: any) => {
     setData((prev) => ({
       ...prev,
       films: prev.films.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
@@ -452,7 +452,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       checkFirestoreStatus().then((st) => setCloudStatus(st));
 
       try {
-        window.alert("클라우드 저장 성공!");
+        window.alert("저장 성공!");
       } catch {
         // Fallback if blocked
       }
@@ -462,7 +462,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       showToast("❌ 저장 실패: " + errorMessage);
 
       try {
-        window.alert("저장 실패 원인: " + errorMessage);
+        window.alert("실패 이유: " + errorMessage);
       } catch {
         // Fallback if blocked
       }
@@ -1627,6 +1627,107 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                           outline: "none",
                         }}
                       />
+                    </div>
+
+                    {/* Booking & Press Inquiry Button Settings */}
+                    <div
+                      style={{
+                        marginTop: "24px",
+                        padding: "18px 20px",
+                        background: "#0a0a0a",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: "12px",
+                          flexWrap: "wrap",
+                          gap: "10px",
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontSize: "12px", fontWeight: 700, color: "#f1f1ee" }}>
+                            상세 페이지 문의/예매 버튼 (BOOKING & PRESS INQUIRY)
+                          </span>
+                          <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#888" }}>
+                            영화 상세 정보 우측 하단에 표시되는 문의 및 링크 버튼을 설정합니다.
+                          </p>
+                        </div>
+                        <label
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            color: currentFilm.bookingButtonVisible !== false ? "#10b981" : "#888",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={currentFilm.bookingButtonVisible !== false}
+                            onChange={(e) =>
+                              handleFilmChange(currentFilm.id, "bookingButtonVisible", e.target.checked)
+                            }
+                            style={{ accentColor: "#f59e0b", width: "16px", height: "16px", cursor: "pointer" }}
+                          />
+                          <span>{currentFilm.bookingButtonVisible !== false ? "버튼 노출" : "버튼 숨김"}</span>
+                        </label>
+                      </div>
+
+                      {currentFilm.bookingButtonVisible !== false && (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "14px" }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
+                              버튼 문구 (Button Text)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="기본: BOOKING & PRESS INQUIRY"
+                              value={currentFilm.bookingButtonText || ""}
+                              onChange={(e) =>
+                                handleFilmChange(currentFilm.id, "bookingButtonText", e.target.value)
+                              }
+                              style={{
+                                width: "100%",
+                                background: "#080808",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#fff",
+                                padding: "10px 14px",
+                                fontSize: "13px",
+                                outline: "none",
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
+                              버튼 링크 / 이메일 (URL or mailto)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="비워둘 시 기본 라이트하우스 배급 문의 메일 전송"
+                              value={currentFilm.bookingButtonUrl || ""}
+                              onChange={(e) =>
+                                handleFilmChange(currentFilm.id, "bookingButtonUrl", e.target.value)
+                              }
+                              style={{
+                                width: "100%",
+                                background: "#080808",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#fff",
+                                padding: "10px 14px",
+                                fontSize: "13px",
+                                outline: "none",
+                                fontFamily: "monospace",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

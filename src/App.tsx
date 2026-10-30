@@ -105,7 +105,12 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string>(() => {
-    return safeGetStorage("lh_admin_pw") || "1234";
+    const saved = safeGetStorage("lh_admin_pw");
+    if (!saved || saved === "1234" || saved === "lighthouse2026") {
+      safeSetStorage("lh_admin_pw", "Diddlsah211!!@@");
+      return "Diddlsah211!!@@";
+    }
+    return saved;
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return safeGetStorage("lh_is_authenticated") === "true";
@@ -537,7 +542,9 @@ export default function App() {
   };
 
   const closeDetail = () => {
-    window.location.hash = "programs";
+    setActiveFilmId(null);
+    window.location.hash = "home";
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleMoreFilms = () => {
@@ -828,9 +835,6 @@ export default function App() {
                 data-key={film.id}
                 href={`#film-${film.id}`}
                 onClick={(e) => openFilmDetail(film.id, e)}
-                onMouseEnter={(e) => handleRowMouseEnter(film, e)}
-                onMouseMove={handleRowMouseMove}
-                onMouseLeave={handleRowMouseLeave}
               >
                 <span className="title-wrap">
                   <span className="title">{film.title}</span>
@@ -1274,7 +1278,7 @@ export default function App() {
             id="filmBack"
             onClick={closeDetail}
           >
-            ← ALL PROGRAMS
+            ← HOME
           </button>
           <h1>{activeFilm.title}</h1>
           <div className="detail-ko">{activeFilm.titleKo}</div>
@@ -1364,25 +1368,43 @@ export default function App() {
               )}
               {activeFilm.country && <div>COUNTRY — {activeFilm.country}</div>}
               {activeFilm.runtime && <div>RUNTIME — {activeFilm.runtime}</div>}
-              <div style={{ marginTop: "1.5rem" }}>
-                <a
-                  href={`mailto:keeper@lighthouse.re.kr?subject=${encodeURIComponent(
-                    `[LIGHTHOUSE] Program Inquiry - ${activeFilm.title}`
-                  )}`}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    border: "1px solid rgba(255,255,255,0.4)",
-                    padding: "8px 16px",
-                    fontSize: "11px",
-                    letterSpacing: "0.1em",
-                    marginTop: "12px",
-                  }}
-                >
-                  BOOKING & PRESS INQUIRY <ArrowUpRight size={14} />
-                </a>
-              </div>
+              {activeFilm.bookingButtonVisible !== false && (
+                <div style={{ marginTop: "1.5rem" }}>
+                  <a
+                    href={
+                      activeFilm.bookingButtonUrl && activeFilm.bookingButtonUrl.trim()
+                        ? activeFilm.bookingButtonUrl.trim()
+                        : `mailto:keeper@lighthouse.re.kr?subject=${encodeURIComponent(
+                            `[LIGHTHOUSE] Program Inquiry - ${activeFilm.title}`
+                          )}`
+                    }
+                    target={
+                      activeFilm.bookingButtonUrl && activeFilm.bookingButtonUrl.startsWith("http")
+                        ? "_blank"
+                        : undefined
+                    }
+                    rel={
+                      activeFilm.bookingButtonUrl && activeFilm.bookingButtonUrl.startsWith("http")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      border: "1px solid rgba(255,255,255,0.4)",
+                      padding: "8px 16px",
+                      fontSize: "11px",
+                      letterSpacing: "0.1em",
+                      marginTop: "12px",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <span>{activeFilm.bookingButtonText?.trim() || "BOOKING & PRESS INQUIRY"}</span>
+                    <ArrowUpRight size={14} />
+                  </a>
+                </div>
+              )}
             </aside>
           </div>
         </article>

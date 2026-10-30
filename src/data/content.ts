@@ -13,6 +13,9 @@ export interface Film {
   country?: string;
   runtime?: string;
   youtubeUrl?: string;
+  bookingButtonVisible?: boolean;
+  bookingButtonText?: string;
+  bookingButtonUrl?: string;
 }
 
 export interface PromoCard {

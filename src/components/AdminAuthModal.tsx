@@ -28,10 +28,9 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   const handleSubmitPassword = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = password.trim();
-    // Verify against current password or standard default
-    const expected = (currentPasswordHash || "").trim();
+    const expected = (currentPasswordHash || "Diddlsah211!!@@").trim();
 
-    if (trimmed === expected || trimmed === "lighthouse2026" || trimmed === "1234") {
+    if (trimmed === expected) {
       setError(null);
       setPassword("");
       onSuccess();
@@ -157,7 +156,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               <input
                 autoFocus
                 type={showPassword ? "text" : "password"}
-                placeholder="비밀번호 입력 (기본: 1234)"
+                placeholder="비밀번호 입력"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -191,9 +190,6 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
-            </div>
-            <div style={{ fontSize: "11px", color: "#666", marginTop: "6px" }}>
-              초기 기본 비밀번호: <code>1234</code>
             </div>
           </div>
 
