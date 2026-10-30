@@ -98,6 +98,14 @@ export function normalizeContent(raw: any): SiteContent {
 
   // 5. Visibility and contact metadata
   base.promosVisible = base.promosVisible !== false;
+  base.artworksVisible = base.artworksVisible !== false;
+  if (!Array.isArray(base.mainArtworkIds) || base.mainArtworkIds.length === 0) {
+    base.mainArtworkIds = INITIAL_CONTENT.mainArtworkIds || [];
+  } else {
+    base.mainArtworkIds = (base.mainArtworkIds as any[])
+      .map((item) => (typeof item === "string" ? item.trim() : item?.id ? String(item.id).trim() : ""))
+      .filter((id) => id.length > 0);
+  }
 
   const initialContact = INITIAL_CONTENT.contact || {
     email: "keeper@lighthouse.re.kr",

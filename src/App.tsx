@@ -9,6 +9,7 @@ import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from
 import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { AdminPanel } from "./components/AdminPanel.tsx";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
+import { ArtworksSection } from "./components/ArtworksSection.tsx";
 import { resolveAssetUrl } from "./utils/assets.ts";
 
 function getYouTubeVideoId(url?: string): string | null {
@@ -835,6 +836,9 @@ export default function App() {
                 data-key={film.id}
                 href={`#film-${film.id}`}
                 onClick={(e) => openFilmDetail(film.id, e)}
+                onMouseEnter={(e) => handleRowMouseEnter(film, e)}
+                onMouseMove={handleRowMouseMove}
+                onMouseLeave={handleRowMouseLeave}
               >
                 <span className="title-wrap">
                   <span className="title">{film.title}</span>
@@ -858,6 +862,15 @@ export default function App() {
             </button>
           )}
         </section>
+
+        {/* Main Artworks Section (White Background, Horizontal Swipe Gallery) */}
+        {content.artworksVisible !== false && (
+          <ArtworksSection
+            films={content.films}
+            mainArtworkIds={content.mainArtworkIds}
+            onSelectFilm={(id) => openFilmDetail(id)}
+          />
+        )}
 
         {/* Director Note Section */}
         <section
@@ -1407,6 +1420,44 @@ export default function App() {
               )}
             </aside>
           </div>
+
+          {/* Film Specific Artworks / Poster Archive Gallery */}
+          {(() => {
+            const detailArtworks = (
+              Array.isArray(activeFilm.artworks) && activeFilm.artworks.length > 0
+                ? activeFilm.artworks
+                : activeFilm.posterImage
+                ? [activeFilm.posterImage]
+                : []
+            ).filter((url) => typeof url === "string" && url.trim().length > 0);
+
+            if (detailArtworks.length === 0) return null;
+
+            return (
+              <div className="detail-artworks-section">
+                <div className="detail-artworks-header">
+                  <h3>ARTWORKS & POSTERS</h3>
+                  <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: "#888" }}>
+                    POSTER & VISUAL ARCHIVE ({detailArtworks.length})
+                  </span>
+                </div>
+                <div className="detail-artworks-grid">
+                  {detailArtworks.map((artUrl, artIdx) => (
+                    <div key={artIdx} className="detail-artwork-item" title={`${activeFilm.title} Artwork ${artIdx + 1}`}>
+                      <img
+                        alt={`${activeFilm.title} Artwork ${artIdx + 1}`}
+                        src={resolveAssetUrl(artUrl)}
+                        onError={(e) => {
+                          const item = (e.currentTarget as HTMLElement).closest(".detail-artwork-item") as HTMLElement | null;
+                          if (item) item.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </article>
       )}
 

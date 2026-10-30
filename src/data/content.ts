@@ -16,6 +16,9 @@ export interface Film {
   bookingButtonVisible?: boolean;
   bookingButtonText?: string;
   bookingButtonUrl?: string;
+  artworks?: string[];
+  showInMainArtworks?: boolean;
+  mainArtworkImage?: string;
 }
 
 export interface PromoCard {
@@ -66,6 +69,8 @@ export interface SiteContent {
   promos: PromoCard[];
   promosVisible?: boolean;
   contact?: ContactInfo;
+  artworksVisible?: boolean;
+  mainArtworkIds?: string[];
 }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
@@ -242,5 +247,7 @@ export const INITIAL_CONTENT: SiteContent = {
     instagramUrl: "https://www.instagram.com/filmlighthouse",
     xUrl: "https://x.com/filmxlighthouse",
     inquiryEndpoint: "https://script.google.com/macros/s/AKfycbx5J9UTRPe0IM9mRuEUbhs9fjDnJOZgqgiGfTlD9DyQEOpJ-TDCTArqym1iRo3o-_qVqg/exec",
-  }
+  },
+  artworksVisible: true,
+  mainArtworkIds: ["celine", "eureka", "contempt", "wicker", "lola"],
 };
