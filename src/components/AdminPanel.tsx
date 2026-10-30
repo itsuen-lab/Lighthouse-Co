@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT } from "../data/content.ts";
+import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT, ArtworkEntry } from "../data/content.ts";
 import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
 import { resolveAssetUrl } from "../utils/assets.ts";
 import {
@@ -1848,107 +1848,524 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         </label>
                       </div>
 
-                      <div style={{ marginBottom: "16px" }}>
-                        <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
-                          메인 화면 노출 대표 이미지 URL (선택 사항: 비워둘 시 기본 포스터 또는 첫 번째 아트워크 사용)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="https://... (비워두면 포스터 또는 첫 번째 아트워크가 메인에 표시됩니다)"
-                          value={currentFilm.mainArtworkImage || ""}
-                          onChange={(e) =>
-                            handleFilmChange(currentFilm.id, "mainArtworkImage", e.target.value)
-                          }
-                          style={{
-                            width: "100%",
-                            background: "#080808",
-                            border: "1px solid rgba(255,255,255,0.2)",
-                            color: "#fff",
-                            padding: "10px 14px",
-                            fontSize: "13px",
-                            outline: "none",
-                            fontFamily: "monospace",
-                          }}
-                        />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
+                            메인 화면 대표 이미지 URL (비워둘 시 포스터 자동 사용)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="https://... (비워둘 시 포스터 사용)"
+                            value={currentFilm.mainArtworkImage || ""}
+                            onChange={(e) =>
+                              handleFilmChange(currentFilm.id, "mainArtworkImage", e.target.value)
+                            }
+                            style={{
+                              width: "100%",
+                              background: "#080808",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                              color: "#fff",
+                              padding: "10px 14px",
+                              fontSize: "13px",
+                              outline: "none",
+                              fontFamily: "monospace",
+                            }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", color: "#f59e0b", fontWeight: 700, marginBottom: "6px" }}>
+                            아트워크 디자이너 (Designed by)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="예: Studio Shin, 피그말리온, Empire Design 등"
+                            value={currentFilm.artworkDesigner || ""}
+                            onChange={(e) =>
+                              handleFilmChange(currentFilm.id, "artworkDesigner", e.target.value)
+                            }
+                            style={{
+                              width: "100%",
+                              background: "#080808",
+                              border: "1px solid rgba(245, 158, 11, 0.45)",
+                              color: "#fff",
+                              padding: "10px 14px",
+                              fontSize: "13px",
+                              outline: "none",
+                            }}
+                          />
+                          <span style={{ fontSize: "10px", color: "#888", display: "block", marginTop: "4px" }}>
+                            메인 화면 아트워크 카드 우측 하단에 &apos;DESIGNED BY [디자이너명]&apos;으로 표시됩니다.
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Film specific artworks list */}
+                      {/* Film specific artworks list with Types/Categories */}
                       <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                          <label style={{ fontSize: "11px", color: "#aaa" }}>
-                            영화 상세 페이지 아트워크 목록 (무제한 등록 가능)
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentArtworks = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
-                              handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, ""]);
-                            }}
-                            style={{
-                              background: "transparent",
-                              border: "1px solid rgba(255,255,255,0.25)",
-                              color: "#f1f1ee",
-                              padding: "4px 10px",
-                              fontSize: "11px",
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            <Plus size={12} />
-                            아트워크 이미지 추가
-                          </button>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
+                          <div>
+                            <label style={{ fontSize: "11px", fontWeight: 700, color: "#f1f1ee", display: "block" }}>
+                              영화 아트워크 및 포스터 종류별 목록 ({(() => {
+                                const list = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                return list.length;
+                              })()}개)
+                            </label>
+                            <span style={{ fontSize: "11px", color: "#888" }}>
+                              포스터 종류(메인, 티저, 스페셜 아트, 해외판, 캐릭터, 스틸컷 등)를 선택/추가하고 관리합니다.
+                            </span>
+                          </div>
+
+                          {/* Quick Add Preset Buttons */}
+                          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentArtworks = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                const newArt: ArtworkEntry = {
+                                  id: `art-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                                  type: "메인/오리지널 포스터",
+                                  imageUrl: "",
+                                  title: "",
+                                };
+                                handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
+                              }}
+                              style={{
+                                background: "#f59e0b",
+                                border: "1px solid #f59e0b",
+                                color: "#000",
+                                padding: "4px 10px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              <Plus size={12} />
+                              + 아트워크 추가
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentArtworks = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                const newArt: ArtworkEntry = {
+                                  id: `art-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                                  type: "티저 포스터",
+                                  imageUrl: "",
+                                  title: "",
+                                };
+                                handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
+                              }}
+                              style={{
+                                background: "#1c1c1c",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#ccc",
+                                padding: "4px 8px",
+                                fontSize: "10.5px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              + 티저 포스터
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentArtworks = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                const newArt: ArtworkEntry = {
+                                  id: `art-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                                  type: "스페셜 아트 포스터",
+                                  imageUrl: "",
+                                  title: "",
+                                };
+                                handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
+                              }}
+                              style={{
+                                background: "#1c1c1c",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#ccc",
+                                padding: "4px 8px",
+                                fontSize: "10.5px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              + 스페셜 아트
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentArtworks = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                const newArt: ArtworkEntry = {
+                                  id: `art-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                                  type: "해외/국제판 포스터",
+                                  imageUrl: "",
+                                  title: "",
+                                };
+                                handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
+                              }}
+                              style={{
+                                background: "#1c1c1c",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#ccc",
+                                padding: "4px 8px",
+                                fontSize: "10.5px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              + 해외/국제판
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentArtworks = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                const newArt: ArtworkEntry = {
+                                  id: `art-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                                  type: "스틸컷 / 비주얼 아카이브",
+                                  imageUrl: "",
+                                  title: "",
+                                };
+                                handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
+                              }}
+                              style={{
+                                background: "#1c1c1c",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#ccc",
+                                padding: "4px 8px",
+                                fontSize: "10.5px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              + 스틸컷
+                            </button>
+                          </div>
                         </div>
 
                         {(!currentFilm.artworks || currentFilm.artworks.length === 0) ? (
-                          <div style={{ fontSize: "11px", color: "#666", padding: "10px 0" }}>
-                            등록된 추가 아트워크가 없습니다. 등록하지 않으면 기본 포스터 이미지가 아트워크로 사용됩니다.
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              color: "#777",
+                              padding: "20px",
+                              background: "#080808",
+                              border: "1px dashed rgba(255,255,255,0.15)",
+                              textAlign: "center",
+                            }}
+                          >
+                            등록된 추가 아트워크 종류가 없습니다.
+                            <br />
+                            상단의 <strong>[+ 아트워크 추가]</strong> 버튼을 눌러 티저 포스터, 해외판 포스터, 스페셜 아트 등 원하는 종류의 아트워크를 추가해 보세요.
                           </div>
                         ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                            {currentFilm.artworks.map((artUrl, idx) => (
-                              <div key={idx} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                <span style={{ fontSize: "11px", color: "#888", width: "24px" }}>#{idx + 1}</span>
-                                <input
-                                  type="text"
-                                  placeholder="이미지 URL (https://...)"
-                                  value={artUrl}
-                                  onChange={(e) => {
-                                    const nextArtworks = [...(currentFilm.artworks || [])];
-                                    nextArtworks[idx] = e.target.value;
-                                    handleFilmChange(currentFilm.id, "artworks", nextArtworks);
-                                  }}
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {currentFilm.artworks.map((rawArt, idx) => {
+                              const artItem: ArtworkEntry =
+                                typeof rawArt === "string"
+                                  ? { id: `art-${idx}`, type: "메인/오리지널 포스터", imageUrl: rawArt, title: "" }
+                                  : {
+                                      id: rawArt.id || `art-${idx}`,
+                                      type: rawArt.type || "메인/오리지널 포스터",
+                                      imageUrl: rawArt.imageUrl || "",
+                                      title: rawArt.title || "",
+                                      caption: rawArt.caption || "",
+                                    };
+
+                              const PRESET_OPTIONS = [
+                                "메인/오리지널 포스터",
+                                "티저 포스터",
+                                "스페셜 아트 포스터",
+                                "해외/국제판 포스터",
+                                "캐릭터 포스터",
+                                "스틸컷 / 비주얼 아카이브",
+                                "기타 (직접 입력)",
+                              ];
+
+                              const isCustomType = !PRESET_OPTIONS.slice(0, 6).includes(artItem.type || "");
+
+                              const updateThisArt = (patch: Partial<ArtworkEntry>) => {
+                                const currentList = Array.isArray(currentFilm.artworks) ? currentFilm.artworks : [];
+                                const nextList = currentList.map((item, i) => {
+                                  if (i !== idx) return item;
+                                  const baseItem: ArtworkEntry =
+                                    typeof item === "string"
+                                      ? { id: `art-${i}`, type: "메인/오리지널 포스터", imageUrl: item, title: "" }
+                                      : { ...item };
+                                  return { ...baseItem, ...patch };
+                                });
+                                handleFilmChange(currentFilm.id, "artworks", nextList);
+                              };
+
+                              const isCurrentMain =
+                                Boolean(currentFilm.mainArtworkImage) &&
+                                Boolean(artItem.imageUrl) &&
+                                currentFilm.mainArtworkImage?.trim() === artItem.imageUrl.trim();
+
+                              return (
+                                <div
+                                  key={artItem.id || idx}
                                   style={{
-                                    flex: 1,
-                                    background: "#080808",
-                                    border: "1px solid rgba(255,255,255,0.2)",
-                                    color: "#fff",
-                                    padding: "8px 12px",
-                                    fontSize: "13px",
-                                    outline: "none",
-                                    fontFamily: "monospace",
+                                    background: "#111111",
+                                    border: isCurrentMain
+                                      ? "1px solid rgba(245, 158, 11, 0.45)"
+                                      : "1px solid rgba(255,255,255,0.12)",
+                                    padding: "14px",
+                                    display: "flex",
+                                    gap: "14px",
+                                    alignItems: "flex-start",
                                   }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextArtworks = (currentFilm.artworks || []).filter((_, i) => i !== idx);
-                                    handleFilmChange(currentFilm.id, "artworks", nextArtworks);
-                                  }}
-                                  style={{
-                                    background: "transparent",
-                                    border: 0,
-                                    color: "#ef4444",
-                                    cursor: "pointer",
-                                    padding: "6px",
-                                  }}
-                                  title="삭제"
                                 >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            ))}
+                                  {/* Thumbnail Preview */}
+                                  <div
+                                    style={{
+                                      width: "56px",
+                                      height: "80px",
+                                      flexShrink: 0,
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.15)",
+                                      overflow: "hidden",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      position: "relative",
+                                    }}
+                                  >
+                                    {artItem.imageUrl ? (
+                                      <img
+                                        alt=""
+                                        src={resolveAssetUrl(artItem.imageUrl)}
+                                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLElement).style.display = "none";
+                                        }}
+                                      />
+                                    ) : (
+                                      <ImageIcon size={18} color="#444" />
+                                    )}
+                                    {isCurrentMain && (
+                                      <span
+                                        style={{
+                                          position: "absolute",
+                                          top: "2px",
+                                          right: "2px",
+                                          background: "#f59e0b",
+                                          color: "#000",
+                                          fontSize: "8px",
+                                          fontWeight: 800,
+                                          padding: "1px 3px",
+                                        }}
+                                      >
+                                        대표
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Content Fields */}
+                                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+                                    {/* Top Control Bar: Type + Title + Up/Down + Delete */}
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                                      <span style={{ fontSize: "11px", fontWeight: 700, color: "#888" }}>
+                                        #{idx + 1}
+                                      </span>
+
+                                      {/* Type Selector Dropdown */}
+                                      <select
+                                        value={isCustomType ? "기타 (직접 입력)" : artItem.type}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === "기타 (직접 입력)") {
+                                            updateThisArt({ type: "스페셜 에디션" });
+                                          } else {
+                                            updateThisArt({ type: val });
+                                          }
+                                        }}
+                                        style={{
+                                          background: "#080808",
+                                          border: "1px solid rgba(245, 158, 11, 0.4)",
+                                          color: "#f59e0b",
+                                          padding: "5px 8px",
+                                          fontSize: "11px",
+                                          fontWeight: 700,
+                                          outline: "none",
+                                          cursor: "pointer",
+                                        }}
+                                        title="아트워크 종류 선택"
+                                      >
+                                        <option value="메인/오리지널 포스터">메인/오리지널 포스터</option>
+                                        <option value="티저 포스터">티저 포스터</option>
+                                        <option value="스페셜 아트 포스터">스페셜 아트 포스터</option>
+                                        <option value="해외/국제판 포스터">해외/국제판 포스터</option>
+                                        <option value="캐릭터 포스터">캐릭터 포스터</option>
+                                        <option value="스틸컷 / 비주얼 아카이브">스틸컷 / 비주얼 아카이브</option>
+                                        <option value="기타 (직접 입력)">기타 (직접 입력)</option>
+                                      </select>
+
+                                      {/* If custom type, allow typing custom label */}
+                                      {isCustomType && (
+                                        <input
+                                          type="text"
+                                          placeholder="아트워크 종류 직접 입력"
+                                          value={artItem.type || ""}
+                                          onChange={(e) => updateThisArt({ type: e.target.value })}
+                                          style={{
+                                            width: "120px",
+                                            background: "#080808",
+                                            border: "1px solid rgba(255,255,255,0.25)",
+                                            color: "#fff",
+                                            padding: "5px 8px",
+                                            fontSize: "11px",
+                                            outline: "none",
+                                          }}
+                                        />
+                                      )}
+
+                                      {/* Artwork Subtitle / Version description */}
+                                      <input
+                                        type="text"
+                                        placeholder="아트워크 상세 명칭 / 버전 (예: 프랑스 극장판, BFI 특별판)"
+                                        value={artItem.title || ""}
+                                        onChange={(e) => updateThisArt({ title: e.target.value })}
+                                        style={{
+                                          flex: 1,
+                                          minWidth: "160px",
+                                          background: "#080808",
+                                          border: "1px solid rgba(255,255,255,0.18)",
+                                          color: "#fff",
+                                          padding: "5px 10px",
+                                          fontSize: "11px",
+                                          outline: "none",
+                                        }}
+                                      />
+
+                                      {/* Order Controls */}
+                                      <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+                                        <button
+                                          type="button"
+                                          disabled={idx === 0}
+                                          onClick={() => {
+                                            if (idx === 0) return;
+                                            const currentList = [...(currentFilm.artworks || [])];
+                                            const [moved] = currentList.splice(idx, 1);
+                                            currentList.splice(idx - 1, 0, moved);
+                                            handleFilmChange(currentFilm.id, "artworks", currentList);
+                                          }}
+                                          style={{
+                                            background: "transparent",
+                                            border: 0,
+                                            color: idx === 0 ? "#333" : "#aaa",
+                                            cursor: idx === 0 ? "default" : "pointer",
+                                            padding: "3px 4px",
+                                          }}
+                                          title="위로 이동"
+                                        >
+                                          <ArrowUp size={13} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={idx === (currentFilm.artworks?.length || 1) - 1}
+                                          onClick={() => {
+                                            const currentList = [...(currentFilm.artworks || [])];
+                                            if (idx >= currentList.length - 1) return;
+                                            const [moved] = currentList.splice(idx, 1);
+                                            currentList.splice(idx + 1, 0, moved);
+                                            handleFilmChange(currentFilm.id, "artworks", currentList);
+                                          }}
+                                          style={{
+                                            background: "transparent",
+                                            border: 0,
+                                            color: idx === (currentFilm.artworks?.length || 1) - 1 ? "#333" : "#aaa",
+                                            cursor: idx === (currentFilm.artworks?.length || 1) - 1 ? "default" : "pointer",
+                                            padding: "3px 4px",
+                                          }}
+                                          title="아래로 이동"
+                                        >
+                                          <ArrowDown size={13} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const currentList = [...(currentFilm.artworks || [])];
+                                            const nextList = currentList.filter((_, i) => i !== idx);
+                                            handleFilmChange(currentFilm.id, "artworks", nextList);
+                                          }}
+                                          style={{
+                                            background: "transparent",
+                                            border: 0,
+                                            color: "#ef4444",
+                                            cursor: "pointer",
+                                            padding: "3px 6px",
+                                          }}
+                                          title="이 아트워크 삭제"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Image URL input & Designed by & Set as Main button */}
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                                      <input
+                                        type="text"
+                                        placeholder="이미지 URL (https://...)"
+                                        value={artItem.imageUrl}
+                                        onChange={(e) => updateThisArt({ imageUrl: e.target.value })}
+                                        style={{
+                                          flex: 1,
+                                          minWidth: "220px",
+                                          background: "#080808",
+                                          border: "1px solid rgba(255,255,255,0.2)",
+                                          color: "#fff",
+                                          padding: "6px 10px",
+                                          fontSize: "12px",
+                                          outline: "none",
+                                          fontFamily: "monospace",
+                                        }}
+                                      />
+                                      <input
+                                        type="text"
+                                        placeholder="Designed by (디자이너 / 스튜디오, 선택)"
+                                        value={artItem.designer || ""}
+                                        onChange={(e) => updateThisArt({ designer: e.target.value })}
+                                        style={{
+                                          width: "200px",
+                                          background: "#080808",
+                                          border: "1px solid rgba(255,255,255,0.18)",
+                                          color: "#fff",
+                                          padding: "6px 10px",
+                                          fontSize: "12px",
+                                          outline: "none",
+                                        }}
+                                        title="해당 아트워크의 디자이너 (미입력 시 영화 기본 디자이너 적용)"
+                                      />
+                                      {artItem.imageUrl && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleFilmChange(currentFilm.id, "mainArtworkImage", artItem.imageUrl);
+                                            showToast(`[${artItem.type}] 이미지가 메인 아트워크 대표 이미지로 지정되었습니다.`);
+                                          }}
+                                          style={{
+                                            background: isCurrentMain ? "rgba(245, 158, 11, 0.2)" : "#1c1c1c",
+                                            border: isCurrentMain ? "1px solid #f59e0b" : "1px solid rgba(255,255,255,0.2)",
+                                            color: isCurrentMain ? "#f59e0b" : "#ccc",
+                                            padding: "6px 12px",
+                                            fontSize: "11px",
+                                            fontWeight: 700,
+                                            whiteSpace: "nowrap",
+                                            cursor: "pointer",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "4px",
+                                          }}
+                                          title="이 이미지를 메인 페이지 아트워크 슬라이드에 우선 노출"
+                                        >
+                                          <Star size={12} fill={isCurrentMain ? "#f59e0b" : "none"} />
+                                          {isCurrentMain ? "메인 대표 지정됨" : "메인 대표로 지정"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -2371,9 +2788,11 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   const film = data.films.find((f) => f.id === filmId);
                   if (!film) return null;
 
+                  const firstArt = Array.isArray(film.artworks) && film.artworks.length > 0 ? film.artworks[0] : null;
+                  const firstArtUrl = typeof firstArt === "string" ? firstArt : firstArt?.imageUrl;
                   const artworkImg =
                     film.mainArtworkImage ||
-                    (Array.isArray(film.artworks) && film.artworks.length > 0 ? film.artworks[0] : null) ||
+                    firstArtUrl ||
                     film.posterImage ||
                     film.heroImage;
 

@@ -1,3 +1,29 @@
+export interface ArtworkEntry {
+  id?: string;
+  type?: string; // 종류: 메인/오리지널 포스터, 티저 포스터, 스페셜 아트 포스터, 해외/국제판 포스터, 캐릭터 포스터, 스틸컷 / 비주얼, 직접 입력
+  imageUrl: string;
+  title?: string; // 아트워크 상세 명칭/설명
+  caption?: string;
+  designer?: string; // 디자이너 / 디자인 스튜디오 (Designed by)
+}
+
+export function getArtworkImageUrl(item: string | ArtworkEntry | undefined | null): string {
+  if (!item) return "";
+  if (typeof item === "string") return item.trim();
+  return item.imageUrl ? item.imageUrl.trim() : "";
+}
+
+export function getArtworkType(item: string | ArtworkEntry | undefined | null): string {
+  if (!item) return "아트워크";
+  if (typeof item === "string") return "메인/오리지널 포스터";
+  return item.type?.trim() || "메인/오리지널 포스터";
+}
+
+export function getArtworkTitle(item: string | ArtworkEntry | undefined | null): string {
+  if (!item || typeof item === "string") return "";
+  return item.title?.trim() || "";
+}
+
 export interface Film {
   id: string;
   title: string;
@@ -16,7 +42,8 @@ export interface Film {
   bookingButtonVisible?: boolean;
   bookingButtonText?: string;
   bookingButtonUrl?: string;
-  artworks?: string[];
+  artworkDesigner?: string; // 기본 대표 아트워크 디자이너 (Designed by)
+  artworks?: (string | ArtworkEntry)[];
   showInMainArtworks?: boolean;
   mainArtworkImage?: string;
 }

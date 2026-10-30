@@ -51,6 +51,33 @@ export function normalizeContent(raw: any): SiteContent {
         ) {
           film.posterImage = resolveAssetUrl("/assets/aistudio/___________________________________________2_5ecc6cfd.jpg");
         }
+
+        if (typeof (film as any).artworkDesigner === "string") {
+          film.artworkDesigner = (film as any).artworkDesigner.trim();
+        }
+
+        if (Array.isArray(film.artworks)) {
+          film.artworks = film.artworks
+            .map((art: any) => {
+              if (typeof art === "string") {
+                const trimmed = art.trim();
+                return trimmed ? { imageUrl: trimmed, type: "메인/오리지널 포스터" } : null;
+              }
+              if (art && typeof art === "object" && typeof art.imageUrl === "string" && art.imageUrl.trim()) {
+                return {
+                  id: typeof art.id === "string" ? art.id : undefined,
+                  imageUrl: art.imageUrl.trim(),
+                  type: typeof art.type === "string" && art.type.trim() ? art.type.trim() : "메인/오리지널 포스터",
+                  title: typeof art.title === "string" ? art.title.trim() : "",
+                  caption: typeof art.caption === "string" ? art.caption.trim() : "",
+                  designer: typeof art.designer === "string" ? art.designer.trim() : undefined,
+                };
+              }
+              return null;
+            })
+            .filter(Boolean) as any[];
+        }
+
         return film;
       });
 

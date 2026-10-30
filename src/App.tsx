@@ -106,12 +106,13 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string>(() => {
+    const defaultPw = "Diddlsah211!!@@";
     const saved = safeGetStorage("lh_admin_pw");
     if (!saved || saved === "1234" || saved === "lighthouse2026") {
-      safeSetStorage("lh_admin_pw", "Diddlsah211!!@@");
-      return "Diddlsah211!!@@";
+      safeSetStorage("lh_admin_pw", defaultPw);
+      return defaultPw;
     }
-    return saved;
+    return saved || defaultPw;
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return safeGetStorage("lh_is_authenticated") === "true";
@@ -836,9 +837,6 @@ export default function App() {
                 data-key={film.id}
                 href={`#film-${film.id}`}
                 onClick={(e) => openFilmDetail(film.id, e)}
-                onMouseEnter={(e) => handleRowMouseEnter(film, e)}
-                onMouseMove={handleRowMouseMove}
-                onMouseLeave={handleRowMouseLeave}
               >
                 <span className="title-wrap">
                   <span className="title">{film.title}</span>
@@ -1423,35 +1421,79 @@ export default function App() {
 
           {/* Film Specific Artworks / Poster Archive Gallery */}
           {(() => {
-            const detailArtworks = (
+            const rawList = (
               Array.isArray(activeFilm.artworks) && activeFilm.artworks.length > 0
                 ? activeFilm.artworks
                 : activeFilm.posterImage
-                ? [activeFilm.posterImage]
+                ? [{ imageUrl: activeFilm.posterImage, type: "메인/오리지널 포스터", title: "공식 메인 포스터" }]
                 : []
-            ).filter((url) => typeof url === "string" && url.trim().length > 0);
+            );
+
+            const detailArtworks = rawList
+              .map((item, idx) => {
+                if (typeof item === "string") {
+                  const trimmed = item.trim();
+                  return trimmed
+                    ? {
+                        id: `art-${idx}`,
+                        imageUrl: trimmed,
+                        type: "메인/오리지널 포스터",
+                        title: "",
+                        designer: activeFilm.artworkDesigner || "",
+                      }
+                    : null;
+                }
+                if (item && typeof item === "object" && typeof item.imageUrl === "string" && item.imageUrl.trim()) {
+                  return {
+                    id: item.id || `art-${idx}`,
+                    imageUrl: item.imageUrl.trim(),
+                    type: item.type?.trim() || "메인/오리지널 포스터",
+                    title: item.title?.trim() || "",
+                    designer: item.designer?.trim() || activeFilm.artworkDesigner || "",
+                  };
+                }
+                return null;
+              })
+              .filter(Boolean) as { id: string; imageUrl: string; type: string; title: string; designer: string }[];
 
             if (detailArtworks.length === 0) return null;
 
             return (
               <div className="detail-artworks-section">
                 <div className="detail-artworks-header">
-                  <h3>ARTWORKS & POSTERS</h3>
-                  <span style={{ fontSize: "11px", letterSpacing: "0.12em", color: "#888" }}>
-                    POSTER & VISUAL ARCHIVE ({detailArtworks.length})
-                  </span>
+                  <div>
+                    <h3>ARTWORKS & POSTER ARCHIVE</h3>
+                    <p style={{ margin: "4px 0 0", fontSize: "11px", letterSpacing: "0.08em", color: "#888" }}>
+                      POSTERS & VISUAL ARCHIVE ({detailArtworks.length})
+                    </p>
+                  </div>
                 </div>
                 <div className="detail-artworks-grid">
-                  {detailArtworks.map((artUrl, artIdx) => (
-                    <div key={artIdx} className="detail-artwork-item" title={`${activeFilm.title} Artwork ${artIdx + 1}`}>
+                  {detailArtworks.map((art, artIdx) => (
+                    <div
+                      key={art.id || artIdx}
+                      className="detail-artwork-item"
+                      title={`${activeFilm.title} - ${art.type}${art.designer ? ` (Designed by ${art.designer})` : ""}${art.title ? ` - ${art.title}` : ""}`}
+                    >
                       <img
-                        alt={`${activeFilm.title} Artwork ${artIdx + 1}`}
-                        src={resolveAssetUrl(artUrl)}
+                        alt={`${activeFilm.title} ${art.type}`}
+                        src={resolveAssetUrl(art.imageUrl)}
                         onError={(e) => {
                           const item = (e.currentTarget as HTMLElement).closest(".detail-artwork-item") as HTMLElement | null;
                           if (item) item.style.display = "none";
                         }}
                       />
+                      <div className="detail-artwork-overlay">
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
+                          <span className="detail-artwork-type-badge">{art.type}</span>
+                          {art.designer && (
+                            <span style={{ fontSize: "9px", color: "#d4d4d0", letterSpacing: "0.08em", fontWeight: 700 }}>
+                              BY {art.designer.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        {art.title && <span className="detail-artwork-title">{art.title}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>

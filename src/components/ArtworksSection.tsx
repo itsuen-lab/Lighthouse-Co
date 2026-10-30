@@ -15,6 +15,7 @@ interface ArtworkDisplayItem {
   title: string;
   director: string;
   imageUrl: string;
+  designer?: string;
 }
 
 export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
@@ -41,9 +42,14 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
       const film = films.find((f) => f.id === id);
       if (!film || film.showInMainArtworks === false) return;
 
+      const firstArt = Array.isArray(film.artworks) && film.artworks.length > 0 ? film.artworks[0] : null;
+      const firstArtUrl = typeof firstArt === "string" ? firstArt : firstArt?.imageUrl;
+      const firstArtDesigner = typeof firstArt === "object" ? firstArt?.designer : undefined;
+      const designer = (firstArtDesigner && firstArtDesigner.trim()) || (film.artworkDesigner && film.artworkDesigner.trim()) || "";
+
       const img =
-        film.mainArtworkImage ||
-        (Array.isArray(film.artworks) && film.artworks.length > 0 ? film.artworks[0] : null) ||
+        (film.mainArtworkImage && film.mainArtworkImage.trim()) ||
+        (firstArtUrl && firstArtUrl.trim()) ||
         film.posterImage ||
         film.heroImage;
 
@@ -54,6 +60,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
           title: film.title,
           director: film.director,
           imageUrl: img.trim(),
+          designer,
         });
       }
     });
@@ -223,10 +230,15 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
                 />
               </div>
 
-              {/* Exact user request: English Film Title and English Director only */}
+              {/* English Film Title on top, English Director and Designed by on the bottom row */}
               <div className="artwork-meta">
                 <span className="artwork-title">{item.title}</span>
-                <span className="artwork-director">{item.director}</span>
+                <div className="artwork-meta-sub">
+                  <span className="artwork-director">{item.director}</span>
+                  {item.designer ? (
+                    <span className="artwork-designer">DESIGNED BY {item.designer}</span>
+                  ) : null}
+                </div>
               </div>
             </div>
           ))}

@@ -103,7 +103,8 @@ button:focus-visible {
   color: #ddd;
   white-space: nowrap;
   position: relative;
-  left: 6px
+  left: 6px;
+  top: -2px;
 }
 
 .nav {
@@ -344,8 +345,13 @@ button:focus-visible {
   padding: 25px 0;
   position: relative;
   text-decoration: none !important;
-  transition: opacity 0.2s ease;
+  transition: border-color 0.25s ease, opacity 0.25s ease;
   cursor: pointer;
+}
+
+.film-row:hover,
+.film-row:focus-within {
+  border-bottom-color: rgba(229, 9, 20, 0.45);
 }
 
 .film-row .title-wrap {
@@ -363,12 +369,8 @@ button:focus-visible {
   text-transform: none;
   font-size: clamp(30px, 4.6vw, 72px);
   text-decoration: none !important;
-  transition: opacity 0.2s ease;
-}
-
-.film-row:hover .title,
-.film-row:focus-within .title {
-  opacity: 0.57;
+  color: #ffffff;
+  transition: color 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
 }
 
 .film-row .title-ko {
@@ -376,6 +378,7 @@ button:focus-visible {
   font-weight: 550;
   color: #bcbcb8;
   letter-spacing: -0.02em;
+  transition: color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .film-row .info {
@@ -384,6 +387,24 @@ button:focus-visible {
   white-space: nowrap;
   font-weight: 700;
   letter-spacing: 0.05em;
+  transition: color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hover: text turns cinema red */
+.film-row:hover .title,
+.film-row:focus-within .title {
+  color: #e50914 !important;
+  opacity: 1 !important;
+}
+
+.film-row:hover .title-ko,
+.film-row:focus-within .title-ko {
+  color: #ff4d4d !important;
+}
+
+.film-row:hover .info,
+.film-row:focus-within .info {
+  color: #e50914 !important;
 }
 
 .programs-more {
@@ -404,35 +425,9 @@ button:focus-visible {
   color: #111;
 }
 
-/* Hover Poster Cursor Tracking */
+/* Hover Poster completely disabled per user request */
 .hover-poster {
-  position: fixed;
-  width: clamp(190px, 20vw, 320px);
-  aspect-ratio: 1500 / 2145;
-  z-index: 70;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  left: 0;
-  top: 0;
-  transform: translate3d(-50%, -50%, 0) rotate(var(--r, -4deg)) scale(0.94);
-  transition: opacity 0.16s ease, visibility 0.16s ease, transform 0.22s ease;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
-  will-change: transform, left, top;
-}
-
-.hover-poster.visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translate3d(-50%, -50%, 0) rotate(var(--r, -4deg)) scale(1);
-}
-
-.hover-poster img {
-  width: 100%;
-  height: 100%;
-  border-radius: 2px;
-  display: block;
-  object-fit: cover;
+  display: none !important;
 }
 
 /* Artworks Section (White Background Gallery & Horizontal Swipe) */
@@ -615,6 +610,15 @@ button:focus-visible {
   color: #dc2626;
 }
 
+.artwork-meta-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .artwork-director {
   font-family: Arial, "Helvetica Neue", sans-serif;
   font-size: 11px;
@@ -622,6 +626,16 @@ button:focus-visible {
   letter-spacing: 0.12em;
   color: #71716e;
   text-transform: uppercase;
+}
+
+.artwork-designer {
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #888884;
+  text-transform: uppercase;
+  margin-left: auto;
 }
 
 /* Detail page artworks gallery */
@@ -673,6 +687,46 @@ button:focus-visible {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.detail-artwork-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 16px 12px 10px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 60%, rgba(0, 0, 0, 0.95) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.detail-artwork-item:hover .detail-artwork-overlay {
+  opacity: 1;
+}
+
+.detail-artwork-type-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #f59e0b;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.detail-artwork-title {
+  font-size: 11px;
+  color: #f1f1ee;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Director Note Full-screen Cinematic Section */
