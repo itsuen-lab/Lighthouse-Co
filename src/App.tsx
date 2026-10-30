@@ -645,6 +645,14 @@ export default function App() {
     ? content.films.find((f) => f.id === activeFilmId)
     : null;
 
+  useEffect(() => {
+    if (activeFilm) {
+      document.title = `${activeFilm.title} — Lighthouse Co.`;
+    } else {
+      document.title = "Lighthouse Co.";
+    }
+  }, [activeFilm]);
+
   return (
     <>
       {/* Floating Header */}
