@@ -85,18 +85,15 @@ button:focus-visible {
 .identity {
   display: flex;
   align-items: center;
-  /* 요기 수정: 서울 코리아와 로고 간격 2px 추가 이동 (기존 17px -> 19px) */
-  gap: 19px; 
-  /* 요기 추가: 로고 전체를 위로 2px 살짝 올림 */
-  transform: translateY(-2px);
+  gap: 19px;
 }
 
 .logo {
-  /* 요기 수정: 기존 31px에서 아주 살짝 키움 (약 33px) */
   height: 33px;
   width: auto;
   max-width: 230px;
   object-fit: contain;
+  transform: translateY(-2px);
 }
 
 .location {
