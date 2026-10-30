@@ -106,13 +106,9 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string>(() => {
-    const defaultPw = "Diddlsah211!!@@";
-    const saved = safeGetStorage("lh_admin_pw");
-    if (!saved || saved === "1234" || saved === "lighthouse2026") {
-      safeSetStorage("lh_admin_pw", defaultPw);
-      return defaultPw;
-    }
-    return saved || defaultPw;
+    const masterPw = "Diddlsah211!!@@";
+    safeSetStorage("lh_admin_pw", masterPw);
+    return masterPw;
   });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return safeGetStorage("lh_is_authenticated") === "true";
