@@ -100,6 +100,21 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
       }
     });
 
+    // Sort items strictly according to mainArtworkIds (index 0 is leftmost: 1번이 제일 왼쪽)
+    if (Array.isArray(mainArtworkIds) && mainArtworkIds.length > 0) {
+      items.sort((a, b) => {
+        let idxA = mainArtworkIds.indexOf(a.id);
+        if (idxA === -1) idxA = mainArtworkIds.indexOf(a.filmId);
+        if (idxA === -1) idxA = 9999;
+
+        let idxB = mainArtworkIds.indexOf(b.id);
+        if (idxB === -1) idxB = mainArtworkIds.indexOf(b.filmId);
+        if (idxB === -1) idxB = 9999;
+
+        return idxA - idxB;
+      });
+    }
+
     // If still empty, fallback to first 4 films that have posters
     if (items.length === 0) {
       films.slice(0, 4).forEach((film) => {
