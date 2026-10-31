@@ -114,6 +114,7 @@ export function normalizeContent(raw: any): SiteContent {
       .filter((p) => p && typeof p === "object" && typeof p.id === "string")
       .map((p) => ({
         ...p,
+        image: typeof p.image === "string" ? formatGoogleDriveImageUrl(p.image) : p.image,
         titleLines: Array.isArray(p.titleLines)
           ? p.titleLines.map(String)
           : [(p as any).title || "SPECIAL PROJECT"],
@@ -163,7 +164,7 @@ export function normalizeContent(raw: any): SiteContent {
 
   const rawDirector = (base.director && typeof base.director === "object" ? base.director : {}) as any;
   base.director = {
-    photo: typeof rawDirector.photo === "string" ? rawDirector.photo : INITIAL_CONTENT.director.photo,
+    photo: typeof rawDirector.photo === "string" ? formatGoogleDriveImageUrl(rawDirector.photo) : INITIAL_CONTENT.director.photo,
     quote: typeof rawDirector.quote === "string" ? rawDirector.quote : INITIAL_CONTENT.director.quote,
     name: typeof rawDirector.name === "string" ? rawDirector.name : INITIAL_CONTENT.director.name,
   };
