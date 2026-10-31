@@ -1524,7 +1524,10 @@ export default function App() {
                     imageUrl: item.imageUrl.trim(),
                     type: item.type?.trim() || "메인/오리지널 포스터",
                     title: item.title?.trim() || "",
-                    designer: item.designer !== undefined ? item.designer.trim() : (activeFilm.artworkDesigner || ""),
+                    designer:
+                      typeof item.designer === "string" && item.designer.trim()
+                        ? item.designer.trim()
+                        : (activeFilm.artworkDesigner || ""),
                     showInMain: item.showInMain !== false,
                   };
                 }
@@ -1614,19 +1617,33 @@ export default function App() {
                                 handleToggleArtworkMainExposure(activeFilm.id, artIdx);
                               }}
                               style={{
-                                background: art.showInMain ? "rgba(34, 197, 94, 0.25)" : "rgba(239, 68, 68, 0.25)",
-                                border: `1px solid ${art.showInMain ? "#22c55e" : "#ef4444"}`,
-                                color: art.showInMain ? "#4ade80" : "#fca5a5",
-                                padding: "3px 6px",
-                                fontSize: "9px",
-                                fontWeight: 800,
+                                background: art.showInMain ? "rgba(34, 197, 94, 0.22)" : "#161616",
+                                border: art.showInMain ? "1.5px solid #22c55e" : "1.5px solid rgba(255, 255, 255, 0.25)",
+                                color: art.showInMain ? "#4ade80" : "#888",
+                                padding: "4px 8px",
+                                fontSize: "9.5px",
+                                fontWeight: 700,
                                 cursor: "pointer",
-                                letterSpacing: "0.05em",
+                                letterSpacing: "0.04em",
                                 whiteSpace: "nowrap",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                boxShadow: art.showInMain ? "0 0 6px rgba(34, 197, 94, 0.25)" : "none",
                               }}
                               title="클릭하여 메인화면 아트워크 섹션에 노출/숨김 전환"
                             >
-                              {art.showInMain ? "★ 메인 노출 ON" : "☆ 메인 숨김 OFF"}
+                              <span
+                                style={{
+                                  width: "6px",
+                                  height: "6px",
+                                  borderRadius: "50%",
+                                  background: art.showInMain ? "#22c55e" : "#666",
+                                  boxShadow: art.showInMain ? "0 0 4px #22c55e" : "none",
+                                  display: "inline-block",
+                                }}
+                              />
+                              {art.showInMain ? "메인 노출 ON" : "메인 숨김 OFF"}
                             </button>
 
                             <button

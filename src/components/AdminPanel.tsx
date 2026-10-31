@@ -2064,6 +2064,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   type: "메인/오리지널 포스터",
                                   imageUrl: "",
                                   title: "",
+                                  designer: "",
+                                  showInMain: true,
                                 };
                                 handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
                               }}
@@ -2092,6 +2094,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   type: "티저 포스터",
                                   imageUrl: "",
                                   title: "",
+                                  designer: "",
+                                  showInMain: true,
                                 };
                                 handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
                               }}
@@ -2115,6 +2119,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   type: "스페셜 아트 포스터",
                                   imageUrl: "",
                                   title: "",
+                                  designer: "",
+                                  showInMain: true,
                                 };
                                 handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
                               }}
@@ -2138,6 +2144,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   type: "해외/국제판 포스터",
                                   imageUrl: "",
                                   title: "",
+                                  designer: "",
+                                  showInMain: true,
                                 };
                                 handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
                               }}
@@ -2161,6 +2169,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   type: "스틸컷 / 비주얼 아카이브",
                                   imageUrl: "",
                                   title: "",
+                                  designer: "",
+                                  showInMain: true,
                                 };
                                 handleFilmChange(currentFilm.id, "artworks", [...currentArtworks, newArt]);
                               }}
@@ -2198,13 +2208,16 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                             {currentFilm.artworks.map((rawArt, idx) => {
                               const artItem: ArtworkEntry =
                                 typeof rawArt === "string"
-                                  ? { id: `art-${idx}`, type: "메인/오리지널 포스터", imageUrl: rawArt, title: "" }
+                                  ? { id: `art-${idx}`, type: "메인/오리지널 포스터", imageUrl: rawArt, title: "", designer: "", showInMain: true }
                                   : {
+                                      ...rawArt,
                                       id: rawArt.id || `art-${idx}`,
                                       type: rawArt.type || "메인/오리지널 포스터",
                                       imageUrl: rawArt.imageUrl || "",
                                       title: rawArt.title || "",
                                       caption: rawArt.caption || "",
+                                      designer: rawArt.designer || "",
+                                      showInMain: rawArt.showInMain !== false,
                                     };
 
                               const PRESET_OPTIONS = [
@@ -2229,7 +2242,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   if (i !== idx) return item;
                                   const baseItem: ArtworkEntry =
                                     typeof item === "string"
-                                      ? { id: `art-${i}`, type: "메인/오리지널 포스터", imageUrl: item, title: "" }
+                                      ? { id: `art-${i}`, type: "메인/오리지널 포스터", imageUrl: item, title: "", designer: "", showInMain: true }
                                       : { ...item };
                                   return { ...baseItem, ...sanitizedPatch };
                                 });
@@ -2442,76 +2455,25 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                       </div>
                                     </div>
 
-                                    {/* Image URL input & Designed by & Set as Main button */}
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                                    {/* Image URL row */}
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
                                       <input
                                         type="text"
-                                        placeholder="이미지 URL (https://...)"
+                                        placeholder="이미지 URL 또는 구글 드라이브 링크"
                                         value={artItem.imageUrl}
                                         onChange={(e) => updateThisArt({ imageUrl: e.target.value })}
                                         style={{
                                           flex: 1,
-                                          minWidth: "220px",
                                           background: "#080808",
                                           border: "1px solid rgba(255,255,255,0.2)",
                                           color: "#fff",
-                                          padding: "6px 10px",
+                                          padding: "7px 10px",
                                           fontSize: "12px",
                                           outline: "none",
                                           fontFamily: "monospace",
                                         }}
+                                        title="구글 드라이브 링크를 붙여넣으면 고속 썸네일 링크로 자동 변환됩니다"
                                       />
-                                      <input
-                                        type="text"
-                                        placeholder="Designed by (이 아트워크 디자이너)"
-                                        value={artItem.designer || ""}
-                                        onChange={(e) => updateThisArt({ designer: e.target.value })}
-                                        style={{
-                                          width: "180px",
-                                          background: "#080808",
-                                          border: "1px solid rgba(245, 158, 11, 0.5)",
-                                          color: "#fff",
-                                          padding: "6px 10px",
-                                          fontSize: "12px",
-                                          outline: "none",
-                                        }}
-                                        title="해당 아트워크의 디자이너 (각 아트워크마다 다르게 지정 가능)"
-                                      />
-                                      {/* Main Exposure Toggle */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const nextVal = artItem.showInMain === false ? true : false;
-                                          updateThisArt({ showInMain: nextVal });
-                                          showToast(`메인 슬라이더에 ${nextVal ? "노출" : "숨김"} 설정되었습니다.`);
-                                        }}
-                                        style={{
-                                          background: artItem.showInMain !== false ? "rgba(34, 197, 94, 0.18)" : "#181818",
-                                          border: artItem.showInMain !== false ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.2)",
-                                          color: artItem.showInMain !== false ? "#4ade80" : "#888",
-                                          padding: "6px 10px",
-                                          fontSize: "11px",
-                                          fontWeight: 700,
-                                          whiteSpace: "nowrap",
-                                          cursor: "pointer",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          gap: "4px",
-                                        }}
-                                        title="이 아트워크를 메인 화면 아트워크 슬라이더에 노출할지 결정합니다"
-                                      >
-                                        {artItem.showInMain !== false ? (
-                                          <>
-                                            <Eye size={12} />
-                                            메인 노출 ON
-                                          </>
-                                        ) : (
-                                          <>
-                                            <EyeOff size={12} />
-                                            메인 숨김 OFF
-                                          </>
-                                        )}
-                                      </button>
                                       {artItem.imageUrl && (
                                         <button
                                           type="button"
@@ -2523,7 +2485,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                             background: isCurrentMain ? "rgba(245, 158, 11, 0.2)" : "#1c1c1c",
                                             border: isCurrentMain ? "1px solid #f59e0b" : "1px solid rgba(255,255,255,0.2)",
                                             color: isCurrentMain ? "#f59e0b" : "#ccc",
-                                            padding: "6px 12px",
+                                            padding: "7px 12px",
                                             fontSize: "11px",
                                             fontWeight: 700,
                                             whiteSpace: "nowrap",
@@ -2532,12 +2494,144 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                             alignItems: "center",
                                             gap: "4px",
                                           }}
-                                          title="이 이미지를 메인 페이지 아트워크 슬라이드에 우선 노출"
+                                          title="이 이미지를 이 영화의 대표 포스터 이미지로 지정합니다"
                                         >
                                           <Star size={12} fill={isCurrentMain ? "#f59e0b" : "none"} />
-                                          {isCurrentMain ? "대표 포스터" : "대표로 지정"}
+                                          {isCurrentMain ? "★ 대표 아트워크" : "대표로 지정"}
                                         </button>
                                       )}
+                                    </div>
+
+                                    {/* Individual Designer & Main Exposure Toggle row */}
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                                      {/* Individual Artwork Designer input box */}
+                                      <div
+                                        style={{
+                                          flex: 1,
+                                          minWidth: "260px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                          background: "#080808",
+                                          border: artItem.designer ? "1.5px solid #f59e0b" : "1px solid rgba(245, 158, 11, 0.45)",
+                                          padding: "5px 8px",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontSize: "10px",
+                                            fontWeight: 800,
+                                            color: "#f59e0b",
+                                            letterSpacing: "0.06em",
+                                            whiteSpace: "nowrap",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "4px",
+                                          }}
+                                        >
+                                          DESIGNED BY:
+                                        </span>
+                                        <input
+                                          type="text"
+                                          placeholder={
+                                            currentFilm.artworkDesigner
+                                              ? `(기본값: ${currentFilm.artworkDesigner}) 개별 디자이너 입력`
+                                              : "이 아트워크 개별 디자이너 / 스튜디오 입력"
+                                          }
+                                          value={artItem.designer || ""}
+                                          onChange={(e) => updateThisArt({ designer: e.target.value })}
+                                          style={{
+                                            flex: 1,
+                                            minWidth: "140px",
+                                            background: "transparent",
+                                            border: "none",
+                                            color: "#fff",
+                                            fontSize: "12px",
+                                            outline: "none",
+                                            padding: "2px 4px",
+                                          }}
+                                          title="해당 아트워크의 디자이너 (각 아트워크마다 다르게 지정 가능, 비워둘 시 영화 기본 디자이너 적용)"
+                                        />
+                                        {artItem.designer ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              updateThisArt({ designer: "" });
+                                              showToast("개별 디자이너가 초기화되었습니다 (영화 기본 디자이너 적용).");
+                                            }}
+                                            style={{
+                                              background: "transparent",
+                                              border: "none",
+                                              color: "#888",
+                                              cursor: "pointer",
+                                              padding: "2px 4px",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                            }}
+                                            title="개별 디자이너 삭제 (영화 기본값으로 복귀)"
+                                          >
+                                            <X size={12} />
+                                          </button>
+                                        ) : null}
+                                      </div>
+
+                                      {/* Main Exposure Toggle */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const isCurrentlyOn = artItem.showInMain !== false;
+                                          const nextVal = !isCurrentlyOn;
+                                          updateThisArt({ showInMain: nextVal });
+                                          showToast(`메인 슬라이더에 ${nextVal ? "노출 [ON]" : "숨김 [OFF]"} 설정되었습니다.`);
+                                        }}
+                                        style={{
+                                          background: artItem.showInMain !== false ? "rgba(34, 197, 94, 0.22)" : "#161616",
+                                          border: artItem.showInMain !== false ? "1.5px solid #22c55e" : "1.5px solid rgba(255, 255, 255, 0.25)",
+                                          color: artItem.showInMain !== false ? "#4ade80" : "#888",
+                                          padding: "6px 12px",
+                                          fontSize: "11px",
+                                          fontWeight: 700,
+                                          whiteSpace: "nowrap",
+                                          cursor: "pointer",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "6px",
+                                          transition: "all 0.15s ease",
+                                          boxShadow: artItem.showInMain !== false ? "0 0 8px rgba(34, 197, 94, 0.25)" : "none",
+                                        }}
+                                        title="클릭 시 메인 화면 아트워크 슬라이더 노출/숨김을 즉시 전환합니다"
+                                      >
+                                        {artItem.showInMain !== false ? (
+                                          <>
+                                            <span
+                                              style={{
+                                                width: "7px",
+                                                height: "7px",
+                                                borderRadius: "50%",
+                                                background: "#22c55e",
+                                                boxShadow: "0 0 6px #22c55e",
+                                                display: "inline-block",
+                                              }}
+                                            />
+                                            <Eye size={12} color="#4ade80" />
+                                            <span>메인 노출 ON</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span
+                                              style={{
+                                                width: "7px",
+                                                height: "7px",
+                                                borderRadius: "50%",
+                                                background: "#666",
+                                                display: "inline-block",
+                                              }}
+                                            />
+                                            <EyeOff size={12} color="#888" />
+                                            <span style={{ color: "#aaa" }}>메인 숨김 OFF</span>
+                                          </>
+                                        )}
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
@@ -3290,28 +3384,59 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const nextShow = artItem.showInMain === false ? true : false;
+                                      const isCurrentlyOn = artItem.showInMain !== false;
+                                      const nextShow = !isCurrentlyOn;
                                       handleUpdateArtworkEntry(film.id, artIdx, { showInMain: nextShow });
-                                      showToast(`메인 슬라이더에 ${nextShow ? "노출" : "숨김"} 처리되었습니다.`);
+                                      showToast(`메인 슬라이더에 ${nextShow ? "노출 [ON]" : "숨김 [OFF]"} 처리되었습니다.`);
                                     }}
                                     style={{
-                                      background: artItem.showInMain !== false ? "rgba(34, 197, 94, 0.18)" : "#181818",
-                                      border: artItem.showInMain !== false ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.2)",
+                                      background: artItem.showInMain !== false ? "rgba(34, 197, 94, 0.22)" : "#161616",
+                                      border: artItem.showInMain !== false ? "1.5px solid #22c55e" : "1.5px solid rgba(255, 255, 255, 0.25)",
                                       color: artItem.showInMain !== false ? "#4ade80" : "#888",
-                                      padding: "5px 10px",
+                                      padding: "6px 12px",
                                       fontSize: "11px",
                                       fontWeight: 700,
                                       cursor: "pointer",
                                       whiteSpace: "nowrap",
                                       display: "inline-flex",
                                       alignItems: "center",
-                                      gap: "5px",
+                                      gap: "6px",
                                       flexShrink: 0,
+                                      transition: "all 0.15s ease",
+                                      boxShadow: artItem.showInMain !== false ? "0 0 8px rgba(34, 197, 94, 0.25)" : "none",
                                     }}
                                     title="메인 화면 아트워크 슬라이더에 노출할지 결정합니다"
                                   >
-                                    {artItem.showInMain !== false ? <Eye size={12} /> : <EyeOff size={12} />}
-                                    {artItem.showInMain !== false ? "메인 노출 ON" : "메인 숨김 OFF"}
+                                    {artItem.showInMain !== false ? (
+                                      <>
+                                        <span
+                                          style={{
+                                            width: "7px",
+                                            height: "7px",
+                                            borderRadius: "50%",
+                                            background: "#22c55e",
+                                            boxShadow: "0 0 6px #22c55e",
+                                            display: "inline-block",
+                                          }}
+                                        />
+                                        <Eye size={12} color="#4ade80" />
+                                        <span>메인 노출 ON</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span
+                                          style={{
+                                            width: "7px",
+                                            height: "7px",
+                                            borderRadius: "50%",
+                                            background: "#666",
+                                            display: "inline-block",
+                                          }}
+                                        />
+                                        <EyeOff size={12} color="#888" />
+                                        <span style={{ color: "#aaa" }}>메인 숨김 OFF</span>
+                                      </>
+                                    )}
                                   </button>
 
                                   {/* Order & Delete */}

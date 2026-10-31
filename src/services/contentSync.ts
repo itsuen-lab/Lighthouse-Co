@@ -73,14 +73,15 @@ export function normalizeContent(raw: any): SiteContent {
                 const trimmed = art.trim();
                 return trimmed ? { imageUrl: formatGoogleDriveImageUrl(trimmed), type: "메인/오리지널 포스터", showInMain: true } : null;
               }
-              if (art && typeof art === "object" && typeof art.imageUrl === "string" && art.imageUrl.trim()) {
+              if (art && typeof art === "object") {
+                const img = typeof art.imageUrl === "string" ? art.imageUrl : "";
                 return {
                   id: typeof art.id === "string" ? art.id : undefined,
-                  imageUrl: formatGoogleDriveImageUrl(art.imageUrl.trim()),
+                  imageUrl: formatGoogleDriveImageUrl(img),
                   type: typeof art.type === "string" && art.type.trim() ? art.type.trim() : "메인/오리지널 포스터",
-                  title: typeof art.title === "string" ? art.title.trim() : "",
-                  caption: typeof art.caption === "string" ? art.caption.trim() : "",
-                  designer: typeof art.designer === "string" ? art.designer.trim() : undefined,
+                  title: typeof art.title === "string" ? art.title : "",
+                  caption: typeof art.caption === "string" ? art.caption : "",
+                  designer: typeof art.designer === "string" ? art.designer : undefined,
                   showInMain: art.showInMain !== false,
                 };
               }
