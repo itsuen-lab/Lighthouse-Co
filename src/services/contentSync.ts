@@ -6,7 +6,7 @@
 import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebase.ts";
 import { SiteContent, INITIAL_CONTENT, DEFAULT_NAV_ITEMS } from "../data/content.ts";
-import { resolveAssetUrl } from "../utils/assets.ts";
+import { resolveAssetUrl, formatGoogleDriveImageUrl } from "../utils/assets.ts";
 
 export const CONTENT_COLLECTION = "site_content";
 export const CONTENT_DOC_ID = "main";
@@ -43,6 +43,16 @@ export function normalizeContent(raw: any): SiteContent {
       .filter((f) => f && typeof f === "object" && typeof f.id === "string")
       .map((f) => {
         const film = { ...f };
+        if (film.heroImage && typeof film.heroImage === "string") {
+          film.heroImage = formatGoogleDriveImageUrl(film.heroImage);
+        }
+        if (film.posterImage && typeof film.posterImage === "string") {
+          film.posterImage = formatGoogleDriveImageUrl(film.posterImage);
+        }
+        if (film.mainArtworkImage && typeof film.mainArtworkImage === "string") {
+          film.mainArtworkImage = formatGoogleDriveImageUrl(film.mainArtworkImage);
+        }
+
         if (
           film.id === "celine" &&
           (!film.posterImage ||
@@ -61,12 +71,12 @@ export function normalizeContent(raw: any): SiteContent {
             .map((art: any) => {
               if (typeof art === "string") {
                 const trimmed = art.trim();
-                return trimmed ? { imageUrl: trimmed, type: "메인/오리지널 포스터" } : null;
+                return trimmed ? { imageUrl: formatGoogleDriveImageUrl(trimmed), type: "메인/오리지널 포스터" } : null;
               }
               if (art && typeof art === "object" && typeof art.imageUrl === "string" && art.imageUrl.trim()) {
                 return {
                   id: typeof art.id === "string" ? art.id : undefined,
-                  imageUrl: art.imageUrl.trim(),
+                  imageUrl: formatGoogleDriveImageUrl(art.imageUrl.trim()),
                   type: typeof art.type === "string" && art.type.trim() ? art.type.trim() : "메인/오리지널 포스터",
                   title: typeof art.title === "string" ? art.title.trim() : "",
                   caption: typeof art.caption === "string" ? art.caption.trim() : "",
