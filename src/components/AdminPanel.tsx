@@ -465,16 +465,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
 
     if (Array.isArray(data.mainArtworkIds) && data.mainArtworkIds.length > 0) {
+      const orderMap = new Map<string, number>();
+      data.mainArtworkIds.forEach((id, idx) => {
+        orderMap.set(id, idx);
+      });
+
       list.sort((a, b) => {
-        let idxA = data.mainArtworkIds!.indexOf(a.id);
-        if (idxA === -1) idxA = data.mainArtworkIds!.indexOf(a.filmId);
-        if (idxA === -1) idxA = 9999;
+        let rankA = orderMap.has(a.id) ? orderMap.get(a.id)! : -1;
+        if (rankA === -1 && orderMap.has(a.filmId)) rankA = orderMap.get(a.filmId)!;
+        if (rankA === -1) rankA = 9999;
 
-        let idxB = data.mainArtworkIds!.indexOf(b.id);
-        if (idxB === -1) idxB = data.mainArtworkIds!.indexOf(b.filmId);
-        if (idxB === -1) idxB = 9999;
+        let rankB = orderMap.has(b.id) ? orderMap.get(b.id)! : -1;
+        if (rankB === -1 && orderMap.has(b.filmId)) rankB = orderMap.get(b.filmId)!;
+        if (rankB === -1) rankB = 9999;
 
-        return idxA - idxB;
+        return rankA - rankB;
       });
     }
 
@@ -484,18 +489,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Set direct Artwork Position (1순위, 2순위...) like Hero Manager
   const handleSetArtworkPosition = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || toIndex < 0 || toIndex >= allArtworksForMain.length) return;
-    const currentOrder = allArtworksForMain.map((item) => item.id);
-    const [moved] = currentOrder.splice(fromIndex, 1);
-    currentOrder.splice(toIndex, 0, moved);
+
+    // Take current ordered list of artworks
+    const reorderedList = [...allArtworksForMain];
+    const [moved] = reorderedList.splice(fromIndex, 1);
+    reorderedList.splice(toIndex, 0, moved);
+
+    // Form strict unique ID list for all artworks in new order
+    const newOrderIds = reorderedList.map((item) => item.id);
 
     const nextData: SiteContent = {
       ...data,
-      mainArtworkIds: currentOrder,
+      mainArtworkIds: newOrderIds,
     };
     lastSaveTimeRef.current = Date.now();
     setData(nextData);
     onSave(nextData);
-    showToast(`아트워크가 ${toIndex + 1}순위(${toIndex === 0 ? "★제일 왼쪽" : ""})로 설정되었습니다.`);
+    showToast(`아트워크가 ${toIndex + 1}순위(${toIndex === 0 ? "★제일 왼쪽" : ""}) 위치로 변경 및 저장되었습니다.`);
   };
 
   const handleMoveArtworkStep = (index: number, direction: "up" | "down") => {

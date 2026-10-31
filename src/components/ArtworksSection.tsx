@@ -37,7 +37,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
     const items: ArtworkDisplayItem[] = [];
 
     films.forEach((film) => {
-      if (!film || film.showInMainArtworks === false) return;
+      if (!film) return;
 
       const artList = Array.isArray(film.artworks) ? film.artworks : [];
 
@@ -102,16 +102,21 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
 
     // Sort items strictly according to mainArtworkIds (index 0 is leftmost: 1번이 제일 왼쪽)
     if (Array.isArray(mainArtworkIds) && mainArtworkIds.length > 0) {
+      const orderMap = new Map<string, number>();
+      mainArtworkIds.forEach((id, idx) => {
+        orderMap.set(id, idx);
+      });
+
       items.sort((a, b) => {
-        let idxA = mainArtworkIds.indexOf(a.id);
-        if (idxA === -1) idxA = mainArtworkIds.indexOf(a.filmId);
-        if (idxA === -1) idxA = 9999;
+        let rankA = orderMap.has(a.id) ? orderMap.get(a.id)! : -1;
+        if (rankA === -1 && orderMap.has(a.filmId)) rankA = orderMap.get(a.filmId)!;
+        if (rankA === -1) rankA = 9999;
 
-        let idxB = mainArtworkIds.indexOf(b.id);
-        if (idxB === -1) idxB = mainArtworkIds.indexOf(b.filmId);
-        if (idxB === -1) idxB = 9999;
+        let rankB = orderMap.has(b.id) ? orderMap.get(b.id)! : -1;
+        if (rankB === -1 && orderMap.has(b.filmId)) rankB = orderMap.get(b.filmId)!;
+        if (rankB === -1) rankB = 9999;
 
-        return idxA - idxB;
+        return rankA - rankB;
       });
     }
 
@@ -135,7 +140,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
     }
 
     return items;
-  }, [films]);
+  }, [films, mainArtworkIds]);
 
   const updateScrollButtons = useCallback(() => {
     const el = trackRef.current;
