@@ -42,9 +42,10 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
       const artList = Array.isArray(film.artworks) ? film.artworks : [];
 
       if (artList.length > 0) {
-        // Include each individual artwork registered for this film
+        // Include each individual artwork registered for this film that is set to show on main
         artList.forEach((art, artIdx) => {
           if (!art) return;
+          if (typeof art === "object" && art.showInMain === false) return;
           const artUrl = typeof art === "string" ? art : art.imageUrl;
           if (!artUrl || !artUrl.trim()) return;
 
@@ -271,12 +272,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
 
               {/* English Film Title on top, English Director and Designed by on the bottom row */}
               <div className="artwork-meta">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px" }}>
-                  <span className="artwork-title">{item.title}</span>
-                  {item.artworkType && item.artworkType !== "메인/오리지널 포스터" && item.artworkType !== "포스터" && (
-                    <span className="artwork-type-tag">{item.artworkType}</span>
-                  )}
-                </div>
+                <span className="artwork-title">{item.title}</span>
                 <div className="artwork-meta-sub">
                   <span className="artwork-director">{item.director}</span>
                   {item.designer ? (

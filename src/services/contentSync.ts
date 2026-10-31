@@ -71,7 +71,7 @@ export function normalizeContent(raw: any): SiteContent {
             .map((art: any) => {
               if (typeof art === "string") {
                 const trimmed = art.trim();
-                return trimmed ? { imageUrl: formatGoogleDriveImageUrl(trimmed), type: "메인/오리지널 포스터" } : null;
+                return trimmed ? { imageUrl: formatGoogleDriveImageUrl(trimmed), type: "메인/오리지널 포스터", showInMain: true } : null;
               }
               if (art && typeof art === "object" && typeof art.imageUrl === "string" && art.imageUrl.trim()) {
                 return {
@@ -81,6 +81,7 @@ export function normalizeContent(raw: any): SiteContent {
                   title: typeof art.title === "string" ? art.title.trim() : "",
                   caption: typeof art.caption === "string" ? art.caption.trim() : "",
                   designer: typeof art.designer === "string" ? art.designer.trim() : undefined,
+                  showInMain: art.showInMain !== false,
                 };
               }
               return null;

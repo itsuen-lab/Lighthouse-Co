@@ -2463,20 +2463,55 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                       />
                                       <input
                                         type="text"
-                                        placeholder="Designed by (디자이너 / 스튜디오, 선택)"
+                                        placeholder="Designed by (이 아트워크 디자이너)"
                                         value={artItem.designer || ""}
                                         onChange={(e) => updateThisArt({ designer: e.target.value })}
                                         style={{
-                                          width: "200px",
+                                          width: "180px",
                                           background: "#080808",
-                                          border: "1px solid rgba(255,255,255,0.18)",
+                                          border: "1px solid rgba(245, 158, 11, 0.5)",
                                           color: "#fff",
                                           padding: "6px 10px",
                                           fontSize: "12px",
                                           outline: "none",
                                         }}
-                                        title="해당 아트워크의 디자이너 (미입력 시 영화 기본 디자이너 적용)"
+                                        title="해당 아트워크의 디자이너 (각 아트워크마다 다르게 지정 가능)"
                                       />
+                                      {/* Main Exposure Toggle */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const nextVal = artItem.showInMain === false ? true : false;
+                                          updateThisArt({ showInMain: nextVal });
+                                          showToast(`메인 슬라이더에 ${nextVal ? "노출" : "숨김"} 설정되었습니다.`);
+                                        }}
+                                        style={{
+                                          background: artItem.showInMain !== false ? "rgba(34, 197, 94, 0.18)" : "#181818",
+                                          border: artItem.showInMain !== false ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.2)",
+                                          color: artItem.showInMain !== false ? "#4ade80" : "#888",
+                                          padding: "6px 10px",
+                                          fontSize: "11px",
+                                          fontWeight: 700,
+                                          whiteSpace: "nowrap",
+                                          cursor: "pointer",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: "4px",
+                                        }}
+                                        title="이 아트워크를 메인 화면 아트워크 슬라이더에 노출할지 결정합니다"
+                                      >
+                                        {artItem.showInMain !== false ? (
+                                          <>
+                                            <Eye size={12} />
+                                            메인 노출 ON
+                                          </>
+                                        ) : (
+                                          <>
+                                            <EyeOff size={12} />
+                                            메인 숨김 OFF
+                                          </>
+                                        )}
+                                      </button>
                                       {artItem.imageUrl && (
                                         <button
                                           type="button"
@@ -2500,7 +2535,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                           title="이 이미지를 메인 페이지 아트워크 슬라이드에 우선 노출"
                                         >
                                           <Star size={12} fill={isCurrentMain ? "#f59e0b" : "none"} />
-                                          {isCurrentMain ? "메인 대표 지정됨" : "메인 대표로 지정"}
+                                          {isCurrentMain ? "대표 포스터" : "대표로 지정"}
                                         </button>
                                       )}
                                     </div>
@@ -3250,6 +3285,34 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                       />
                                     </div>
                                   </div>
+
+                                  {/* Main Exposure Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextShow = artItem.showInMain === false ? true : false;
+                                      handleUpdateArtworkEntry(film.id, artIdx, { showInMain: nextShow });
+                                      showToast(`메인 슬라이더에 ${nextShow ? "노출" : "숨김"} 처리되었습니다.`);
+                                    }}
+                                    style={{
+                                      background: artItem.showInMain !== false ? "rgba(34, 197, 94, 0.18)" : "#181818",
+                                      border: artItem.showInMain !== false ? "1px solid #22c55e" : "1px solid rgba(255,255,255,0.2)",
+                                      color: artItem.showInMain !== false ? "#4ade80" : "#888",
+                                      padding: "5px 10px",
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      whiteSpace: "nowrap",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "5px",
+                                      flexShrink: 0,
+                                    }}
+                                    title="메인 화면 아트워크 슬라이더에 노출할지 결정합니다"
+                                  >
+                                    {artItem.showInMain !== false ? <Eye size={12} /> : <EyeOff size={12} />}
+                                    {artItem.showInMain !== false ? "메인 노출 ON" : "메인 숨김 OFF"}
+                                  </button>
 
                                   {/* Order & Delete */}
                                   <div style={{ display: "flex", gap: "4px", alignItems: "center", flexShrink: 0 }}>

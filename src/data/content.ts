@@ -5,6 +5,7 @@ export interface ArtworkEntry {
   title?: string; // 아트워크 상세 명칭/설명
   caption?: string;
   designer?: string; // 디자이너 / 디자인 스튜디오 (Designed by)
+  showInMain?: boolean; // 메인 화면 아트워크 슬라이더 노출 여부 (기본값 true)
 }
 
 export function getArtworkImageUrl(item: string | ArtworkEntry | undefined | null): string {

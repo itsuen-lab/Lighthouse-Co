@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
-import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus } from "lucide-react";
 import { AdminPanel } from "./components/AdminPanel.tsx";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
 import { ArtworksSection } from "./components/ArtworksSection.tsx";
@@ -555,6 +555,70 @@ export default function App() {
     setContent(normalized);
     safeSetStorage("lighthouse_content", JSON.stringify(normalized));
     await saveSiteContentToCloud(normalized);
+  };
+
+  const handleToggleArtworkMainExposure = async (filmId: string, artworkIndex: number) => {
+    const updatedFilms = content.films.map((film) => {
+      if (film.id !== filmId) return film;
+      const rawArts = Array.isArray(film.artworks) && film.artworks.length > 0
+        ? film.artworks
+        : film.posterImage
+        ? [{ imageUrl: film.posterImage, type: "메인/오리지널 포스터", designer: film.artworkDesigner || "", showInMain: true }]
+        : [];
+      const updatedArts = rawArts.map((artItem, idx) => {
+        const art = typeof artItem === "string" ? { imageUrl: artItem, type: "메인/오리지널 포스터", showInMain: true } : { ...artItem };
+        if (idx !== artworkIndex) return art;
+        const currentShow = art.showInMain !== false;
+        return {
+          ...art,
+          showInMain: !currentShow,
+        };
+      });
+      return {
+        ...film,
+        artworks: updatedArts,
+      };
+    });
+
+    const updatedContent: SiteContent = {
+      ...content,
+      films: updatedFilms,
+    };
+
+    await handleSaveAdmin(updatedContent);
+  };
+
+  const handleUpdateArtworkDesignerDirect = async (filmId: string, artworkIndex: number, currentDesigner: string) => {
+    const nextDesigner = window.prompt("이 아트워크의 디자이너(Designed by) 명칭을 입력하세요:", currentDesigner || "");
+    if (nextDesigner === null) return;
+
+    const updatedFilms = content.films.map((film) => {
+      if (film.id !== filmId) return film;
+      const rawArts = Array.isArray(film.artworks) && film.artworks.length > 0
+        ? film.artworks
+        : film.posterImage
+        ? [{ imageUrl: film.posterImage, type: "메인/오리지널 포스터", designer: film.artworkDesigner || "", showInMain: true }]
+        : [];
+      const updatedArts = rawArts.map((artItem, idx) => {
+        const art = typeof artItem === "string" ? { imageUrl: artItem, type: "메인/오리지널 포스터", showInMain: true } : { ...artItem };
+        if (idx !== artworkIndex) return art;
+        return {
+          ...art,
+          designer: nextDesigner.trim(),
+        };
+      });
+      return {
+        ...film,
+        artworks: updatedArts,
+      };
+    });
+
+    const updatedContent: SiteContent = {
+      ...content,
+      films: updatedFilms,
+    };
+
+    await handleSaveAdmin(updatedContent);
   };
 
   const handleResetAdmin = async () => {
@@ -1450,6 +1514,7 @@ export default function App() {
                         type: "메인/오리지널 포스터",
                         title: "",
                         designer: activeFilm.artworkDesigner || "",
+                        showInMain: true,
                       }
                     : null;
                 }
@@ -1459,12 +1524,13 @@ export default function App() {
                     imageUrl: item.imageUrl.trim(),
                     type: item.type?.trim() || "메인/오리지널 포스터",
                     title: item.title?.trim() || "",
-                    designer: item.designer?.trim() || activeFilm.artworkDesigner || "",
+                    designer: item.designer !== undefined ? item.designer.trim() : (activeFilm.artworkDesigner || ""),
+                    showInMain: item.showInMain !== false,
                   };
                 }
                 return null;
               })
-              .filter(Boolean) as { id: string; imageUrl: string; type: string; title: string; designer: string }[];
+              .filter(Boolean) as { id: string; imageUrl: string; type: string; title: string; designer: string; showInMain: boolean }[];
 
             if (detailArtworks.length === 0) return null;
 
@@ -1477,6 +1543,29 @@ export default function App() {
                       POSTERS & VISUAL ARCHIVE ({detailArtworks.length})
                     </p>
                   </div>
+
+                  {isAuthenticated && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAdminOpen(true)}
+                      style={{
+                        background: "#181818",
+                        border: "1px solid rgba(245, 158, 11, 0.6)",
+                        color: "#f59e0b",
+                        padding: "6px 14px",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                      title="어드민 관리창을 열어 이 영화의 아트워크를 추가/수정합니다"
+                    >
+                      <Plus size={12} />
+                      어드민에서 아트워크 추가/관리
+                    </button>
+                  )}
                 </div>
                 <div className="detail-artworks-grid">
                   {detailArtworks.map((art, artIdx) => (
@@ -1496,13 +1585,73 @@ export default function App() {
                       <div className="detail-artwork-overlay">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
                           <span className="detail-artwork-type-badge">{art.type}</span>
-                          {art.designer && (
-                            <span style={{ fontSize: "9px", color: "#d4d4d0", letterSpacing: "0.08em", fontWeight: 700 }}>
-                              BY {art.designer.toUpperCase()}
+                          {art.designer ? (
+                            <span style={{ fontSize: "9px", color: "#f59e0b", letterSpacing: "0.08em", fontWeight: 700, border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1px 5px", background: "rgba(0,0,0,0.6)" }}>
+                              DESIGNED BY {art.designer.toUpperCase()}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         {art.title && <span className="detail-artwork-title">{art.title}</span>}
+
+                        {/* Admin Inline Controls on Film Detail Page */}
+                        {isAuthenticated && (
+                          <div
+                            style={{
+                              marginTop: "8px",
+                              paddingTop: "6px",
+                              borderTop: "1px solid rgba(255,255,255,0.2)",
+                              display: "flex",
+                              gap: "6px",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              pointerEvents: "auto",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleArtworkMainExposure(activeFilm.id, artIdx);
+                              }}
+                              style={{
+                                background: art.showInMain ? "rgba(34, 197, 94, 0.25)" : "rgba(239, 68, 68, 0.25)",
+                                border: `1px solid ${art.showInMain ? "#22c55e" : "#ef4444"}`,
+                                color: art.showInMain ? "#4ade80" : "#fca5a5",
+                                padding: "3px 6px",
+                                fontSize: "9px",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                letterSpacing: "0.05em",
+                                whiteSpace: "nowrap",
+                              }}
+                              title="클릭하여 메인화면 아트워크 섹션에 노출/숨김 전환"
+                            >
+                              {art.showInMain ? "★ 메인 노출 ON" : "☆ 메인 숨김 OFF"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateArtworkDesignerDirect(activeFilm.id, artIdx, art.designer);
+                              }}
+                              style={{
+                                background: "rgba(245, 158, 11, 0.2)",
+                                border: "1px solid #f59e0b",
+                                color: "#f59e0b",
+                                padding: "3px 6px",
+                                fontSize: "9px",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                letterSpacing: "0.05em",
+                                whiteSpace: "nowrap",
+                              }}
+                              title="클릭하여 이 아트워크의 디자이너(Designed by) 변경"
+                            >
+                              디자이너 수정 ✎
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
