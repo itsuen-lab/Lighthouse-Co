@@ -45,7 +45,8 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
         // Include each individual artwork registered for this film that is set to show on main
         artList.forEach((art, artIdx) => {
           if (!art) return;
-          if (typeof art === "object" && art.showInMain === false) return;
+          const isShow = typeof art === "object" ? art.showInMain === true : false;
+          if (!isShow) return;
           const artUrl = typeof art === "string" ? art : art.imageUrl;
           if (!artUrl || !artUrl.trim()) return;
 
@@ -79,7 +80,9 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
           });
         });
       } else {
-        // Fallback if film has no entries in its artworks array
+        // Fallback film poster ONLY if explicitly turned ON (prevents newly registered films from auto-exposure)
+        if (film.showInMainArtworks !== true) return;
+
         const img =
           (film.mainArtworkImage && film.mainArtworkImage.trim()) ||
           (film.posterImage && film.posterImage.trim()) ||

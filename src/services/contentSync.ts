@@ -71,7 +71,7 @@ export function normalizeContent(raw: any): SiteContent {
             .map((art: any) => {
               if (typeof art === "string") {
                 const trimmed = art.trim();
-                return trimmed ? { imageUrl: formatGoogleDriveImageUrl(trimmed), type: "메인/오리지널 포스터", showInMain: true } : null;
+                return trimmed ? { imageUrl: formatGoogleDriveImageUrl(trimmed), type: "메인/오리지널 포스터", showInMain: false } : null;
               }
               if (art && typeof art === "object") {
                 const img = typeof art.imageUrl === "string" ? art.imageUrl : "";
@@ -82,12 +82,16 @@ export function normalizeContent(raw: any): SiteContent {
                   title: typeof art.title === "string" ? art.title : "",
                   caption: typeof art.caption === "string" ? art.caption : "",
                   designer: typeof art.designer === "string" ? art.designer : undefined,
-                  showInMain: art.showInMain !== false,
+                  showInMain: typeof art.showInMain === "boolean" ? art.showInMain : false,
                 };
               }
               return null;
             })
             .filter(Boolean) as any[];
+        }
+
+        if (typeof film.showInMainArtworks !== "boolean") {
+          film.showInMainArtworks = false;
         }
 
         return film;

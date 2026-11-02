@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem } from "./data/content.ts";
+import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
 import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus } from "lucide-react";
 import { AdminPanel } from "./components/AdminPanel.tsx";
@@ -558,22 +558,40 @@ export default function App() {
   };
 
   const handleToggleArtworkMainExposure = async (filmId: string, artworkIndex: number) => {
+    let nextVal = false;
+    let artTitleOrType = "아트워크";
+
     const updatedFilms = content.films.map((film) => {
       if (film.id !== filmId) return film;
-      const rawArts = Array.isArray(film.artworks) && film.artworks.length > 0
-        ? film.artworks
-        : film.posterImage
-        ? [{ imageUrl: film.posterImage, type: "메인/오리지널 포스터", designer: film.artworkDesigner || "", showInMain: true }]
-        : [];
+      const hasArtworks = Array.isArray(film.artworks) && film.artworks.length > 0;
+
+      if (!hasArtworks || artworkIndex === -1) {
+        // Fallback film poster
+        const currentShow = film.showInMainArtworks === true;
+        nextVal = !currentShow;
+        artTitleOrType = film.title;
+        return {
+          ...film,
+          showInMainArtworks: nextVal,
+        };
+      }
+
+      const rawArts = film.artworks || [];
       const updatedArts = rawArts.map((artItem, idx) => {
-        const art = typeof artItem === "string" ? { imageUrl: artItem, type: "메인/오리지널 포스터", showInMain: true } : { ...artItem };
+        const art: ArtworkEntry =
+          typeof artItem === "string"
+            ? { id: `art-${idx}`, imageUrl: artItem, type: "메인/오리지널 포스터", showInMain: false }
+            : { ...artItem };
         if (idx !== artworkIndex) return art;
-        const currentShow = art.showInMain !== false;
+        const currentShow = art.showInMain === true;
+        nextVal = !currentShow;
+        artTitleOrType = art.title || art.type || "아트워크";
         return {
           ...art,
-          showInMain: !currentShow,
+          showInMain: nextVal,
         };
       });
+
       return {
         ...film,
         artworks: updatedArts,
@@ -597,10 +615,10 @@ export default function App() {
       const rawArts = Array.isArray(film.artworks) && film.artworks.length > 0
         ? film.artworks
         : film.posterImage
-        ? [{ imageUrl: film.posterImage, type: "메인/오리지널 포스터", designer: film.artworkDesigner || "", showInMain: true }]
+        ? [{ imageUrl: film.posterImage, type: "메인/오리지널 포스터", designer: film.artworkDesigner || "", showInMain: film.showInMainArtworks === true }]
         : [];
       const updatedArts = rawArts.map((artItem, idx) => {
-        const art = typeof artItem === "string" ? { imageUrl: artItem, type: "메인/오리지널 포스터", showInMain: true } : { ...artItem };
+        const art = typeof artItem === "string" ? { imageUrl: artItem, type: "메인/오리지널 포스터", showInMain: false } : { ...artItem };
         if (idx !== artworkIndex) return art;
         return {
           ...art,
@@ -1495,11 +1513,17 @@ export default function App() {
 
           {/* Film Specific Artworks / Poster Archive Gallery */}
           {(() => {
+            const hasArtworks = Array.isArray(activeFilm.artworks) && activeFilm.artworks.length > 0;
+            const fallbackPoster =
+              (activeFilm.mainArtworkImage && activeFilm.mainArtworkImage.trim()) ||
+              (activeFilm.posterImage && activeFilm.posterImage.trim()) ||
+              (activeFilm.heroImage && activeFilm.heroImage.trim());
+
             const rawList = (
-              Array.isArray(activeFilm.artworks) && activeFilm.artworks.length > 0
-                ? activeFilm.artworks
-                : activeFilm.posterImage
-                ? [{ imageUrl: activeFilm.posterImage, type: "메인/오리지널 포스터", title: "공식 메인 포스터" }]
+              hasArtworks
+                ? activeFilm.artworks!
+                : fallbackPoster
+                ? [{ id: `${activeFilm.id}-main`, imageUrl: fallbackPoster, type: "메인/오리지널 포스터", title: "공식 메인 포스터", showInMain: activeFilm.showInMainArtworks === true }]
                 : []
             );
 
@@ -1510,17 +1534,22 @@ export default function App() {
                   return trimmed
                     ? {
                         id: `art-${idx}`,
+                        artworkIndex: hasArtworks ? idx : -1,
                         imageUrl: trimmed,
                         type: "메인/오리지널 포스터",
                         title: "",
                         designer: activeFilm.artworkDesigner || "",
-                        showInMain: true,
+                        showInMain: false,
                       }
                     : null;
                 }
                 if (item && typeof item === "object" && typeof item.imageUrl === "string" && item.imageUrl.trim()) {
+                  const isShow = hasArtworks
+                    ? (item.showInMain === true)
+                    : (activeFilm.showInMainArtworks === true);
                   return {
                     id: item.id || `art-${idx}`,
+                    artworkIndex: hasArtworks ? idx : -1,
                     imageUrl: item.imageUrl.trim(),
                     type: item.type?.trim() || "메인/오리지널 포스터",
                     title: item.title?.trim() || "",
@@ -1528,12 +1557,12 @@ export default function App() {
                       typeof item.designer === "string" && item.designer.trim()
                         ? item.designer.trim()
                         : (activeFilm.artworkDesigner || ""),
-                    showInMain: item.showInMain !== false,
+                    showInMain: isShow,
                   };
                 }
                 return null;
               })
-              .filter(Boolean) as { id: string; imageUrl: string; type: string; title: string; designer: string; showInMain: boolean }[];
+              .filter(Boolean) as { id: string; artworkIndex: number; imageUrl: string; type: string; title: string; designer: string; showInMain: boolean }[];
 
             if (detailArtworks.length === 0) return null;
 
@@ -1571,9 +1600,9 @@ export default function App() {
                   )}
                 </div>
                 <div className="detail-artworks-grid">
-                  {detailArtworks.map((art, artIdx) => (
+                  {detailArtworks.map((art) => (
                     <div
-                      key={art.id || artIdx}
+                      key={art.id}
                       className="detail-artwork-item"
                       title={`${activeFilm.title} - ${art.type}${art.designer ? ` (Designed by ${art.designer})` : ""}${art.title ? ` - ${art.title}` : ""}`}
                     >
@@ -1614,7 +1643,7 @@ export default function App() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleToggleArtworkMainExposure(activeFilm.id, artIdx);
+                                handleToggleArtworkMainExposure(activeFilm.id, art.artworkIndex);
                               }}
                               style={{
                                 background: art.showInMain ? "rgba(34, 197, 94, 0.22)" : "#161616",
@@ -1650,7 +1679,7 @@ export default function App() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleUpdateArtworkDesignerDirect(activeFilm.id, artIdx, art.designer);
+                                handleUpdateArtworkDesignerDirect(activeFilm.id, art.artworkIndex, art.designer);
                               }}
                               style={{
                                 background: "rgba(245, 158, 11, 0.2)",
