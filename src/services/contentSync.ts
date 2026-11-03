@@ -175,6 +175,43 @@ export function normalizeContent(raw: any): SiteContent {
     name: typeof rawDirector.name === "string" ? rawDirector.name : INITIAL_CONTENT.director.name,
   };
 
+  // 6. Validate & sanitize directorNotes
+  base.directorNotesVisible = base.directorNotesVisible !== false;
+  if (Array.isArray(base.directorNotes) && base.directorNotes.length > 0) {
+    base.directorNotes = base.directorNotes
+      .filter((n) => n && typeof n === "object" && typeof n.id === "string")
+      .map((n, idx) => ({
+        id: n.id || `note-${idx + 1}`,
+        quote: typeof n.quote === "string" ? n.quote : "",
+        photo: typeof n.photo === "string" ? formatGoogleDriveImageUrl(n.photo) : "",
+        directorName: typeof n.directorName === "string" ? n.directorName.trim() : "",
+        filmTitle: typeof n.filmTitle === "string" ? n.filmTitle.trim() : "",
+        visible: n.visible !== false,
+      }));
+  } else {
+    // Fallback from legacy single director object
+    base.directorNotes = [
+      {
+        id: "note-1",
+        quote: base.director.quote || "Photography is truth. The cinema is truth twenty-four times per second.",
+        photo: base.director.photo || "",
+        directorName: base.director.name || "Jean-Luc Godard",
+        filmTitle: "",
+        visible: true,
+      },
+    ];
+  }
+
+  // Keep legacy single director object in sync with first visible note
+  const firstVisibleNote = base.directorNotes.find((n) => n.visible !== false) || base.directorNotes[0];
+  if (firstVisibleNote) {
+    base.director = {
+      photo: firstVisibleNote.photo || "",
+      quote: firstVisibleNote.quote || "",
+      name: firstVisibleNote.directorName || "",
+    };
+  }
+
   return base;
 }
 

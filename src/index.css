@@ -839,6 +839,31 @@ button:focus-visible {
   content: '”';
 }
 
+.director-note__attribution {
+  margin-top: clamp(16px, 2vw, 24px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.director-note__author {
+  font-size: clamp(12px, 1.2vw, 16px);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 700;
+}
+
+.director-note__film {
+  font-size: clamp(12px, 1.2vw, 15px);
+  color: #f59e0b;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 /* About Section */
 .about {
   padding: 110px var(--pad);

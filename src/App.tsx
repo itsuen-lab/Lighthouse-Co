@@ -989,33 +989,57 @@ export default function App() {
           />
         )}
 
-        {/* Director Note Section */}
-        <section
-          aria-label="Director comment"
-          className="director-note"
-          id="director-note"
-        >
-          <div className="director-note__grid">
-            <div
-              aria-label="감독 사진 자리"
-              className={`director-note__portrait ${
-                content.director.photo ? "has-photo" : ""
-              }`}
-              role="img"
-              style={
-                content.director.photo
-                  ? { backgroundImage: `url(${content.director.photo})` }
-                  : undefined
-              }
-            >
-              <div className="director-note__content">
-                <p className="director-note__quote-ko" lang="ko">
-                  {content.director.quote}
-                </p>
-              </div>
+        {/* Director Note Section (Multi-Note Stacked Cinematic Sections) */}
+        {content.directorNotesVisible !== false && (() => {
+          const rawNotes = Array.isArray(content.directorNotes) && content.directorNotes.length > 0
+            ? content.directorNotes
+            : (content.director?.quote
+                ? [{ id: "note-1", quote: content.director.quote, photo: content.director.photo, directorName: content.director.name, visible: true }]
+                : []);
+          const visibleNotes = rawNotes.filter((n) => n && n.visible !== false && n.quote?.trim());
+
+          if (visibleNotes.length === 0) return null;
+
+          return (
+            <div className="director-notes-container" id="director-note">
+              {visibleNotes.map((note, idx) => {
+                const photoUrl = resolveAssetUrl(note.photo || "");
+                return (
+                  <section
+                    key={note.id || `note-${idx}`}
+                    aria-label={`Director comment ${idx + 1}`}
+                    className="director-note"
+                  >
+                    <div className="director-note__grid">
+                      <div
+                        aria-label="감독 사진 배경"
+                        className={`director-note__portrait ${photoUrl ? "has-photo" : ""}`}
+                        role="img"
+                        style={photoUrl ? { backgroundImage: `url(${photoUrl})` } : undefined}
+                      >
+                        <div className="director-note__content">
+                          <p className="director-note__quote-ko" lang="ko">
+                            {note.quote}
+                          </p>
+                          {(note.directorName || note.filmTitle) && (
+                            <div className="director-note__attribution">
+                              {note.directorName && (
+                                <span className="director-note__author">— {note.directorName}</span>
+                              )}
+                              {note.filmTitle && (
+                                <span className="director-note__film">〈{note.filmTitle}〉</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                );
+              })}
             </div>
-          </div>
-        </section>
+          );
+        })()}
 
         {/* About Section */}
         <section className="about" id="about">
@@ -1546,19 +1570,38 @@ export default function App() {
 
           {/* Film Specific Artworks / Poster Archive Gallery */}
           {(() => {
-            const hasArtworks = Array.isArray(activeFilm.artworks) && activeFilm.artworks.length > 0;
-            const fallbackPoster =
-              (activeFilm.mainArtworkImage && activeFilm.mainArtworkImage.trim()) ||
-              (activeFilm.posterImage && activeFilm.posterImage.trim()) ||
-              (activeFilm.heroImage && activeFilm.heroImage.trim());
+            // Check for explicitly registered artworks
+            const validArtworks = Array.isArray(activeFilm.artworks)
+              ? activeFilm.artworks.filter((item) => {
+                  if (typeof item === "string") return Boolean(item.trim());
+                  if (item && typeof item === "object") return Boolean(item.imageUrl && item.imageUrl.trim());
+                  return false;
+                })
+              : [];
 
-            const rawList = (
-              hasArtworks
-                ? activeFilm.artworks!
-                : fallbackPoster
-                ? [{ id: `${activeFilm.id}-main`, imageUrl: fallbackPoster, type: "메인/오리지널 포스터", title: "공식 메인 포스터", showInMain: activeFilm.showInMainArtworks === true }]
-                : []
-            );
+            const hasValidArtworks = validArtworks.length > 0;
+
+            // Check for explicitly registered official poster (heroImage 스틸컷은 절대 포스터/아트워크로 자동 대체하지 않음)
+            const registeredPoster =
+              (activeFilm.posterImage && activeFilm.posterImage.trim()) ||
+              (activeFilm.mainArtworkImage && activeFilm.mainArtworkImage.trim()) ||
+              "";
+
+            // 포스터나 아트워크를 등록해야만 보이도록 처리 (자동 노출 방지)
+            if (!hasValidArtworks && !registeredPoster) {
+              return null;
+            }
+
+            const rawList = hasValidArtworks
+              ? validArtworks
+              : [{
+                  id: `${activeFilm.id}-poster`,
+                  imageUrl: registeredPoster,
+                  type: "공식 포스터",
+                  title: activeFilm.titleKo || activeFilm.title,
+                  designer: activeFilm.artworkDesigner || "",
+                  showInMain: activeFilm.showInMainArtworks === true,
+                }];
 
             const detailArtworks = rawList
               .map((item, idx) => {
@@ -1567,7 +1610,7 @@ export default function App() {
                   return trimmed
                     ? {
                         id: `art-${idx}`,
-                        artworkIndex: hasArtworks ? idx : -1,
+                        artworkIndex: hasValidArtworks ? idx : -1,
                         imageUrl: trimmed,
                         type: "메인/오리지널 포스터",
                         title: "",
@@ -1577,12 +1620,12 @@ export default function App() {
                     : null;
                 }
                 if (item && typeof item === "object" && typeof item.imageUrl === "string" && item.imageUrl.trim()) {
-                  const isShow = hasArtworks
+                  const isShow = hasValidArtworks
                     ? (item.showInMain === true)
                     : (activeFilm.showInMainArtworks === true);
                   return {
                     id: item.id || `art-${idx}`,
-                    artworkIndex: hasArtworks ? idx : -1,
+                    artworkIndex: hasValidArtworks ? idx : -1,
                     imageUrl: item.imageUrl.trim(),
                     type: item.type?.trim() || "메인/오리지널 포스터",
                     title: item.title?.trim() || "",

@@ -79,6 +79,15 @@ export interface ContactInfo {
   inquiryEndpoint: string;
 }
 
+export interface DirectorNote {
+  id: string;
+  quote: string; // 인용구/명대사 문구
+  photo?: string; // 배경 사진 (구글 드라이브 및 이미지 URL)
+  directorName?: string; // 감독 또는 인물명 (선택)
+  filmTitle?: string; // 관련 영화 제목 (선택)
+  visible?: boolean; // 메인 화면 노출 여부 (기본 true)
+}
+
 export interface SiteContent {
   navItems?: NavItem[];
   featured: string[];
@@ -88,6 +97,8 @@ export interface SiteContent {
     quote: string;
     name?: string;
   };
+  directorNotes?: DirectorNote[];
+  directorNotesVisible?: boolean;
   promo?: {
     image: string;
     titleLines: string[];
@@ -454,8 +465,19 @@ export const INITIAL_CONTENT: SiteContent = {
   ],
   "director": {
     "photo": "https://drive.google.com/thumbnail?id=1cwkz_Lp5UG-ttg1MFRcycPnbNdhVOLck&sz=w1920",
-    "quote": "Photography is truth. The cinema is truth twenty-four times per second.",
-      },
+    "quote": "Photography is truth. The cinema is truth twenty-four times per second."
+  },
+  "directorNotes": [
+    {
+      "id": "note-1",
+      "quote": "Photography is truth. The cinema is truth twenty-four times per second.",
+      "photo": "https://drive.google.com/thumbnail?id=1cwkz_Lp5UG-ttg1MFRcycPnbNdhVOLck&sz=w1920",
+      "directorName": "Jean-Luc Godard",
+      "filmTitle": "Le Petit Soldat",
+      "visible": true
+    }
+  ],
+  "directorNotesVisible": true,
   "promo": {
     "image": "/images/promo-example.jpg",
     "subtitle": "영화 밖에서 이어지는 새로운 경험",

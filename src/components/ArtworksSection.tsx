@@ -85,8 +85,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
 
         const img =
           (film.mainArtworkImage && film.mainArtworkImage.trim()) ||
-          (film.posterImage && film.posterImage.trim()) ||
-          (film.heroImage && film.heroImage.trim());
+          (film.posterImage && film.posterImage.trim());
 
         if (img) {
           items.push({
@@ -123,10 +122,10 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
       });
     }
 
-    // If still empty, fallback to first 4 films that have posters
+    // If still empty, fallback to first films that actually have registered posters
     if (items.length === 0) {
       films.slice(0, 4).forEach((film) => {
-        const img = film.posterImage || film.heroImage;
+        const img = (film.mainArtworkImage && film.mainArtworkImage.trim()) || (film.posterImage && film.posterImage.trim());
         if (img) {
           items.push({
             id: film.id,

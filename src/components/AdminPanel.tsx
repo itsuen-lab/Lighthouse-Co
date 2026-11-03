@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT, ArtworkEntry } from "../data/content.ts";
+import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT, ArtworkEntry, DirectorNote } from "../data/content.ts";
 import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
 import { resolveAssetUrl, formatGoogleDriveImageUrl } from "../utils/assets.ts";
 import {
@@ -232,7 +232,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleConvertFilmPosterToArtwork = (filmId: string) => {
     const film = data.films.find((f) => f.id === filmId);
     if (!film) return;
-    const img = film.mainArtworkImage || film.posterImage || film.heroImage;
+    const img = (film.mainArtworkImage && film.mainArtworkImage.trim()) || (film.posterImage && film.posterImage.trim());
     if (!img) {
       alert("해당 영화에 등록된 포스터 이미지가 없습니다.");
       return;
@@ -432,6 +432,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           if (!artUrl || !artUrl.trim()) return;
           const artId = (typeof art === "object" && art.id) ? art.id : `${film.id}-art-${idx}`;
           const isShow = typeof art === "object" ? art.showInMain === true : false;
+          // 메인 노출 안 되는 건 여기에선 완전히 제외
+          if (!isShow) return;
+
           const artDesigner = typeof art === "object" ? art.designer : undefined;
           const designer = (artDesigner && artDesigner.trim()) || (film.artworkDesigner && film.artworkDesigner.trim()) || "";
           const artTitle = typeof art === "object" ? art.title : undefined;
@@ -447,13 +450,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type: artType || "포스터",
             title: artTitle,
             designer,
-            showInMain: isShow,
+            showInMain: true,
           });
         });
       } else {
+        // 영화 대표 포스터도 메인 노출이 켜져 있을 때만 포함
+        if (film.showInMainArtworks !== true) return;
+
         const img = (film.mainArtworkImage && film.mainArtworkImage.trim()) ||
-          (film.posterImage && film.posterImage.trim()) ||
-          (film.heroImage && film.heroImage.trim());
+          (film.posterImage && film.posterImage.trim());
         if (img) {
           list.push({
             id: `${film.id}-main`,
@@ -465,7 +470,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             type: "오리지널 포스터",
             title: film.title,
             designer: (film.artworkDesigner && film.artworkDesigner.trim()) || "",
-            showInMain: film.showInMainArtworks === true,
+            showInMain: true,
           });
         }
       }
@@ -492,6 +497,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     return list;
   }, [data.films, data.mainArtworkIds]);
+
+  // Unexposed artworks list (kept separate so they don't clutter the main active sequence)
+  const unexposedArtworks = React.useMemo(() => {
+    const list: FlatArtworkItem[] = [];
+    data.films.forEach((film) => {
+      const artList = Array.isArray(film.artworks) ? film.artworks : [];
+      if (artList.length > 0) {
+        artList.forEach((art, idx) => {
+          if (!art) return;
+          const artUrl = typeof art === "string" ? art : art.imageUrl;
+          if (!artUrl || !artUrl.trim()) return;
+          const artId = (typeof art === "object" && art.id) ? art.id : `${film.id}-art-${idx}`;
+          const isShow = typeof art === "object" ? art.showInMain === true : false;
+          if (isShow) return;
+
+          const artDesigner = typeof art === "object" ? art.designer : undefined;
+          const designer = (artDesigner && artDesigner.trim()) || (film.artworkDesigner && film.artworkDesigner.trim()) || "";
+          const artTitle = typeof art === "object" ? art.title : undefined;
+          const artType = typeof art === "object" ? art.type : "포스터";
+
+          list.push({
+            id: artId,
+            filmId: film.id,
+            filmTitle: film.title,
+            filmTitleKo: film.titleKo,
+            artIndex: idx,
+            imageUrl: artUrl.trim(),
+            type: artType || "포스터",
+            title: artTitle,
+            designer,
+            showInMain: false,
+          });
+        });
+      } else {
+        if (film.showInMainArtworks === true) return;
+        const img = (film.mainArtworkImage && film.mainArtworkImage.trim()) ||
+          (film.posterImage && film.posterImage.trim());
+        if (img) {
+          list.push({
+            id: `${film.id}-main`,
+            filmId: film.id,
+            filmTitle: film.title,
+            filmTitleKo: film.titleKo,
+            artIndex: -1,
+            imageUrl: img.trim(),
+            type: "오리지널 포스터",
+            title: film.title,
+            designer: (film.artworkDesigner && film.artworkDesigner.trim()) || "",
+            showInMain: false,
+          });
+        }
+      }
+    });
+    return list;
+  }, [data.films]);
 
   // Set direct Artwork Position (1순위, 2순위...) like Hero Manager
   const handleSetArtworkPosition = (fromIndex: number, toIndex: number) => {
@@ -1151,7 +1211,7 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
             }}
           >
             <Quote size={16} />
-            <span>디렉터스 노트</span>
+            <span>디렉터스 노트 관리 ({((data.directorNotes ? data.directorNotes.filter((n) => n.visible !== false).length : 1))})</span>
           </button>
 
           <button
@@ -3439,16 +3499,16 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                           </div>
                         </div>
 
-                        {/* Right Action Controls: Main Exposure Switch + Jump Button */}
+                        {/* Right Action Controls: Release Exposure & Jump Button */}
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-                          {/* Exposure Toggle Button (Prominent ON / OFF) */}
+                          {/* Exposure Release Button */}
                           <button
                             type="button"
                             onClick={() => handleToggleArtworkExposure(item.filmId, item.artIndex)}
                             style={{
-                              background: item.showInMain ? "rgba(34, 197, 94, 0.22)" : "#161616",
-                              border: item.showInMain ? "1.5px solid #22c55e" : "1.5px solid rgba(255, 255, 255, 0.25)",
-                              color: item.showInMain ? "#4ade80" : "#888",
+                              background: "rgba(239, 68, 68, 0.12)",
+                              border: "1.5px solid rgba(239, 68, 68, 0.5)",
+                              color: "#f87171",
                               padding: "7px 14px",
                               fontSize: "11px",
                               fontWeight: 700,
@@ -3458,42 +3518,13 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                               alignItems: "center",
                               gap: "6px",
                               transition: "all 0.15s ease",
-                              boxShadow: item.showInMain ? "0 0 8px rgba(34, 197, 94, 0.25)" : "none",
-                              minWidth: "115px",
+                              minWidth: "125px",
                               justifyContent: "center",
                             }}
-                            title="클릭 시 메인 화면 노출/숨김을 즉시 전환합니다 (즉시 자동 저장)"
+                            title="클릭 시 메인 노출을 해제하고 이 순위 목록에서 제외합니다"
                           >
-                            {item.showInMain ? (
-                              <>
-                                <span
-                                  style={{
-                                    width: "7px",
-                                    height: "7px",
-                                    borderRadius: "50%",
-                                    background: "#22c55e",
-                                    boxShadow: "0 0 6px #22c55e",
-                                    display: "inline-block",
-                                  }}
-                                />
-                                <Eye size={12} color="#4ade80" />
-                                <span>메인 노출 ON</span>
-                              </>
-                            ) : (
-                              <>
-                                <span
-                                  style={{
-                                    width: "7px",
-                                    height: "7px",
-                                    borderRadius: "50%",
-                                    border: "1.5px solid #666",
-                                    display: "inline-block",
-                                  }}
-                                />
-                                <EyeOff size={12} color="#888" />
-                                <span>메인 숨김 OFF</span>
-                              </>
-                            )}
+                            <EyeOff size={13} color="#f87171" />
+                            <span>메인 노출 해제</span>
                           </button>
 
                           {/* Jump to Film editor button */}
@@ -3524,6 +3555,90 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   })
                 )}
               </div>
+
+              {/* Unexposed Artworks Section (Collapsible - Not visible in main ranking list by default) */}
+              {unexposedArtworks.length > 0 && (
+                <details
+                  style={{
+                    background: "#0d0d0d",
+                    border: "1px dashed rgba(255,255,255,0.18)",
+                    padding: "16px 20px",
+                    marginTop: "20px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <summary
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: "#aaa",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      userSelect: "none",
+                    }}
+                  >
+                    <span>
+                      미노출 아트워크 목록 ({unexposedArtworks.length}개) — 필요한 경우 메인 화면에 추가할 수 있습니다.
+                    </span>
+                    <span style={{ fontSize: "11px", color: "#f59e0b" }}>목록 펼치기 / 접기 ▾</span>
+                  </summary>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "16px" }}>
+                    {unexposedArtworks.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: "#141414",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          padding: "12px 16px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "12px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <img
+                            alt=""
+                            src={resolveAssetUrl(item.imageUrl)}
+                            style={{ width: "36px", height: "50px", objectFit: "cover", opacity: 0.6 }}
+                          />
+                          <div>
+                            <div style={{ fontSize: "13px", color: "#ccc", fontWeight: 600 }}>
+                              {item.filmTitleKo || item.filmTitle}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "#777" }}>
+                              {item.type} {item.title ? `· ${item.title}` : ""} {item.designer ? `(Designed by ${item.designer})` : ""}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleArtworkExposure(item.filmId, item.artIndex)}
+                          style={{
+                            background: "#222",
+                            border: "1px solid #22c55e",
+                            color: "#4ade80",
+                            padding: "6px 12px",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            borderRadius: "2px",
+                          }}
+                        >
+                          <Plus size={12} />
+                          <span>메인에 노출하기</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           )}
 
@@ -3960,71 +4075,775 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
             </div>
           )}
 
-          {/* TAB 3: DIRECTOR NOTE */}
-          {activeTab === "director" && (
-            <div style={{ maxWidth: "800px" }}>
-              <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
-                디렉터스 노트 관리
-              </h2>
-              <p style={{ margin: "0 0 28px", color: "#888", fontSize: "13px" }}>
-                영화 목록 아래에 위치하는 100svh 대형 시네마틱 명대사 및 감독 코멘트 섹션입니다.
-              </p>
+          {/* TAB 3: DIRECTOR NOTE MULTI-MANAGEMENT */}
+          {activeTab === "director" && (() => {
+            const currentNotes: DirectorNote[] = (Array.isArray(data.directorNotes) && data.directorNotes.length > 0)
+              ? data.directorNotes
+              : [
+                  {
+                    id: "note-1",
+                    quote: data.director?.quote || "Photography is truth. The cinema is truth twenty-four times per second.",
+                    photo: data.director?.photo || "",
+                    directorName: data.director?.name || "Jean-Luc Godard",
+                    filmTitle: "",
+                    visible: true,
+                  },
+                ];
 
-              <div style={{ background: "#101010", border: "1px solid rgba(255,255,255,0.12)", padding: "28px" }}>
-                <label style={{ display: "block", fontSize: "12px", color: "#aaa", marginBottom: "8px" }}>
-                  한국어 인용구/코멘트 문구 (Quote)
-                </label>
-                <textarea
-                  rows={4}
-                  value={data.director.quote}
-                  onChange={(e) =>
-                    setData((prev) => ({
-                      ...prev,
-                      director: { ...prev.director, quote: e.target.value },
-                    }))
-                  }
+            const handleAddDirectorNote = () => {
+              const newId = `note-${Date.now()}`;
+              const newNote: DirectorNote = {
+                id: newId,
+                quote: "새로운 인용구 또는 감독의 코멘트를 입력하세요.",
+                photo: "",
+                directorName: "",
+                filmTitle: "",
+                visible: true,
+              };
+              const updatedNotes = [...currentNotes, newNote];
+              const firstVisible = updatedNotes.find((n) => n.visible !== false) || updatedNotes[0];
+              const nextData = {
+                ...data,
+                directorNotes: updatedNotes,
+                director: {
+                  photo: firstVisible?.photo || "",
+                  quote: firstVisible?.quote || "",
+                  name: firstVisible?.directorName || "",
+                },
+              };
+              setData(nextData);
+              onSave(nextData);
+              showToast("새 디렉터스 노트가 추가되었습니다 (하단에 이어서 노출).");
+            };
+
+            const handleUpdateDirectorNote = (id: string, field: keyof DirectorNote, val: any) => {
+              const updatedNotes = currentNotes.map((n) => {
+                if (n.id !== id) return n;
+                const finalVal = field === "photo" && typeof val === "string" ? formatGoogleDriveImageUrl(val) : val;
+                return { ...n, [field]: finalVal };
+              });
+              const firstVisible = updatedNotes.find((n) => n.visible !== false) || updatedNotes[0];
+              const nextData = {
+                ...data,
+                directorNotes: updatedNotes,
+                director: {
+                  photo: firstVisible?.photo || "",
+                  quote: firstVisible?.quote || "",
+                  name: firstVisible?.directorName || "",
+                },
+              };
+              setData(nextData);
+              onSave(nextData);
+            };
+
+            const exposedNotes = currentNotes.filter((n) => n.visible !== false);
+            const unexposedNotes = currentNotes.filter((n) => n.visible === false);
+
+            const handleToggleDirectorNote = (id: string) => {
+              let nextState = true;
+              const updatedNotes = currentNotes.map((n) => {
+                if (n.id !== id) return n;
+                nextState = n.visible === false ? true : false;
+                return { ...n, visible: nextState };
+              });
+              const firstVisible = updatedNotes.find((n) => n.visible !== false) || updatedNotes[0];
+              const nextData = {
+                ...data,
+                directorNotes: updatedNotes,
+                director: {
+                  photo: firstVisible?.photo || "",
+                  quote: firstVisible?.quote || "",
+                  name: firstVisible?.directorName || "",
+                },
+              };
+              setData(nextData);
+              onSave(nextData);
+              showToast(nextState ? "디렉터스 노트가 메인에 노출되도록 등록되었습니다." : "디렉터스 노트의 메인 노출이 해제되었습니다.");
+            };
+
+            const handleMoveDirectorNote = (expIndex: number, direction: "up" | "down") => {
+              const targetExpIndex = direction === "up" ? expIndex - 1 : expIndex + 1;
+              if (targetExpIndex < 0 || targetExpIndex >= exposedNotes.length) return;
+              const newExposed = [...exposedNotes];
+              const temp = newExposed[expIndex];
+              newExposed[expIndex] = newExposed[targetExpIndex];
+              newExposed[targetExpIndex] = temp;
+              const updatedNotes = [...newExposed, ...unexposedNotes];
+              const firstVisible = updatedNotes.find((n) => n.visible !== false) || updatedNotes[0];
+              const nextData = {
+                ...data,
+                directorNotes: updatedNotes,
+                director: {
+                  photo: firstVisible?.photo || "",
+                  quote: firstVisible?.quote || "",
+                  name: firstVisible?.directorName || "",
+                },
+              };
+              setData(nextData);
+              onSave(nextData);
+              showToast(`노출 순위가 ${targetExpIndex + 1}순위로 변경되었습니다.`);
+            };
+
+            const handleSetDirectorNoteRank = (currentExpIndex: number, targetRank: number) => {
+              const targetExpIndex = targetRank - 1;
+              if (targetExpIndex < 0 || targetExpIndex >= exposedNotes.length || currentExpIndex === targetExpIndex) return;
+              const newExposed = [...exposedNotes];
+              const [removed] = newExposed.splice(currentExpIndex, 1);
+              newExposed.splice(targetExpIndex, 0, removed);
+              const updatedNotes = [...newExposed, ...unexposedNotes];
+              const firstVisible = updatedNotes.find((n) => n.visible !== false) || updatedNotes[0];
+              const nextData = {
+                ...data,
+                directorNotes: updatedNotes,
+                director: {
+                  photo: firstVisible?.photo || "",
+                  quote: firstVisible?.quote || "",
+                  name: firstVisible?.directorName || "",
+                },
+              };
+              setData(nextData);
+              onSave(nextData);
+              showToast(`${targetRank}순위로 노출 순서가 변경되었습니다.`);
+            };
+
+            const handleDeleteDirectorNote = (id: string, index?: number) => {
+              if (currentNotes.length <= 1) {
+                if (!confirm("디렉터스 노트를 삭제하시겠습니까? (최소 1개는 유지하는 것을 권장합니다)")) return;
+              } else {
+                if (!confirm(typeof index === "number" ? `${index + 1}순위 디렉터스 노트를 삭제하시겠습니까?` : "디렉터스 노트를 삭제하시겠습니까?")) return;
+              }
+              const updatedNotes = currentNotes.filter((n) => n.id !== id);
+              const firstVisible = updatedNotes.find((n) => n.visible !== false) || updatedNotes[0];
+              const nextData = {
+                ...data,
+                directorNotes: updatedNotes,
+                director: {
+                  photo: firstVisible?.photo || "",
+                  quote: firstVisible?.quote || "",
+                  name: firstVisible?.directorName || "",
+                },
+              };
+              setData(nextData);
+              onSave(nextData);
+              showToast("디렉터스 노트가 삭제되었습니다.");
+            };
+
+            const exposedCount = exposedNotes.length;
+
+            return (
+              <div style={{ maxWidth: "960px" }}>
+                {/* Header */}
+                <div
                   style={{
-                    width: "100%",
-                    background: "#080808",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    color: "#fff",
-                    padding: "14px",
-                    fontSize: "18px",
-                    fontFamily: "'Noto Serif KR', serif",
-                    lineHeight: "1.6",
-                    outline: "none",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "24px",
+                    gap: "20px",
+                    flexWrap: "wrap",
                   }}
-                />
+                >
+                  <div>
+                    <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
+                      디렉터스 노트 관리 시스템
+                    </h2>
+                    <p style={{ margin: 0, color: "#888", fontSize: "13px", lineHeight: "1.6" }}>
+                      메인 화면 아트워크 섹션 아래에 위치하는 100svh 대형 시네마틱 명대사 및 감독 코멘트 섹션입니다.
+                      <br />
+                      여러 개를 등록하면 <strong>1순위부터 차례대로 아래로 이어서 노출</strong>됩니다. (현재 등록: <strong style={{ color: "#f59e0b" }}>{currentNotes.length}개</strong> / 메인 노출 중: <strong style={{ color: "#22c55e" }}>{exposedCount}개</strong>)
+                    </p>
+                  </div>
 
-                <div style={{ marginTop: "24px" }}>
-                  <label style={{ display: "block", fontSize: "12px", color: "#aaa", marginBottom: "8px" }}>
-                    배경 사진 이미지 URL (Photo URL, 비워두면 흑백 시네마 그래픽 적용)
-                  </label>
-                  <input
-                    type="text"
-                    value={data.director.photo || ""}
-                    placeholder="https://... 또는 비워두기"
-                    onChange={(e) =>
-                      setData((prev) => ({
-                        ...prev,
-                        director: { ...prev.director, photo: formatGoogleDriveImageUrl(e.target.value) },
-                      }))
-                    }
-                    style={{
-                      width: "100%",
-                      background: "#080808",
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      color: "#fff",
-                      padding: "10px 14px",
-                      fontSize: "13px",
-                      outline: "none",
-                      fontFamily: "monospace",
-                    }}
-                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    {/* Section Global Toggle */}
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: data.directorNotesVisible !== false ? "#10b981" : "#888",
+                        background: "#181818",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        padding: "8px 14px",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={data.directorNotesVisible !== false}
+                        onChange={(e) => {
+                          const nextVal = e.target.checked;
+                          const nextData = { ...data, directorNotesVisible: nextVal };
+                          setData(nextData);
+                          onSave(nextData);
+                          showToast(`디렉터스 노트 섹션이 ${nextVal ? "노출 [ON]" : "전체 숨김 [OFF]"} 처리되었습니다.`);
+                        }}
+                        style={{ accentColor: "#f59e0b", width: "16px", height: "16px", cursor: "pointer" }}
+                      />
+                      <span>{data.directorNotesVisible !== false ? "전체 섹션 ON" : "전체 섹션 OFF"}</span>
+                    </label>
+
+                    {/* Add Note Button */}
+                    <button
+                      type="button"
+                      onClick={handleAddDirectorNote}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        background: "#f59e0b",
+                        border: "none",
+                        color: "#000",
+                        padding: "10px 18px",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                        letterSpacing: "0.06em",
+                        cursor: "pointer",
+                        borderRadius: "2px",
+                        boxShadow: "0 4px 12px rgba(245, 158, 11, 0.25)",
+                      }}
+                    >
+                      <Plus size={16} strokeWidth={3} />
+                      <span>디렉터스 노트 추가</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Guide Banner */}
+                <div
+                  style={{
+                    background: "#141414",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    padding: "14px 18px",
+                    marginBottom: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>🎬</span>
+                  <div style={{ fontSize: "12px", color: "#ccc", lineHeight: "1.6" }}>
+                    <strong style={{ color: "#f59e0b" }}>메인 노출 관리 안내:</strong>{" "}
+                    각 카드의 <strong>[순위 드롭다운]</strong> 및 <strong>[▲ / ▼]</strong> 버튼으로 상하 노출 순서를 변경할 수 있으며, <strong>[메인 노출 ON/OFF]</strong> 스위치로 선별 노출할 수 있습니다. 1순위가 가장 먼저 보이고 추가된 노트들이 이어서 하단에 펼쳐집니다.
+                  </div>
+                </div>
+
+                {/* Notes List */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                  {exposedNotes.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "36px 20px",
+                        textAlign: "center",
+                        background: "#0c0c0c",
+                        border: "1px dashed rgba(255,255,255,0.15)",
+                        color: "#888",
+                      }}
+                    >
+                      <p style={{ margin: "0 0 10px", fontSize: "14px", color: "#bbb", fontWeight: 600 }}>
+                        현재 메인 화면에 노출 중인 디렉터스 노트가 없습니다.
+                      </p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>
+                        상단의 <strong>[디렉터스 노트 추가]</strong>를 누르거나, 아래 미노출 목록에서 <strong>[+ 메인에 노출하기]</strong>를 클릭하세요.
+                      </p>
+                    </div>
+                  ) : (
+                    exposedNotes.map((note, index) => {
+                      const isExposed = true;
+                      const previewPhoto = resolveAssetUrl(note.photo || "");
+
+                      return (
+                        <div
+                          key={note.id || index}
+                          style={{
+                            background: "#101010",
+                            border: "1px solid rgba(255,255,255,0.18)",
+                            transition: "all 0.2s ease",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {/* Note Card Header Bar */}
+                          <div
+                            style={{
+                              background: "#181818",
+                              borderBottom: "1px solid rgba(255,255,255,0.08)",
+                              padding: "12px 18px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              flexWrap: "wrap",
+                              gap: "12px",
+                            }}
+                          >
+                            {/* Left: Rank Controls */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                              {/* Rank Badge */}
+                              <span
+                                style={{
+                                  background: "#f59e0b",
+                                  color: "#000",
+                                  fontWeight: 900,
+                                  fontSize: "11px",
+                                  padding: "4px 8px",
+                                  borderRadius: "3px",
+                                  letterSpacing: "0.06em",
+                                }}
+                              >
+                                {index + 1}순위
+                              </span>
+
+                              {/* Rank Select Dropdown */}
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ fontSize: "11px", color: "#888", fontWeight: 600 }}>순위 변경:</span>
+                                <select
+                                  value={index + 1}
+                                  onChange={(e) => handleSetDirectorNoteRank(index, Number(e.target.value))}
+                                  style={{
+                                    background: "#080808",
+                                    border: "1px solid rgba(245, 158, 11, 0.4)",
+                                    color: "#f59e0b",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                    padding: "4px 8px",
+                                    cursor: "pointer",
+                                    outline: "none",
+                                  }}
+                                >
+                                  {exposedNotes.map((_, rIdx) => (
+                                    <option key={rIdx} value={rIdx + 1}>
+                                      {rIdx + 1}순위 {rIdx === 0 ? "(★제일 상단)" : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Up / Down Move Buttons */}
+                              <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                                <button
+                                  type="button"
+                                  disabled={index === 0}
+                                  onClick={() => handleMoveDirectorNote(index, "up")}
+                                  style={{
+                                    background: "#222",
+                                    border: "1px solid rgba(255,255,255,0.15)",
+                                    color: index === 0 ? "#555" : "#fff",
+                                    width: "28px",
+                                    height: "26px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: index === 0 ? "not-allowed" : "pointer",
+                                  }}
+                                  title="한 칸 위로 이동"
+                                >
+                                  <ArrowUp size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={index === exposedNotes.length - 1}
+                                  onClick={() => handleMoveDirectorNote(index, "down")}
+                                  style={{
+                                    background: "#222",
+                                    border: "1px solid rgba(255,255,255,0.15)",
+                                    color: index === exposedNotes.length - 1 ? "#555" : "#fff",
+                                    width: "28px",
+                                    height: "26px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: index === exposedNotes.length - 1 ? "not-allowed" : "pointer",
+                                  }}
+                                  title="한 칸 아래로 이동"
+                                >
+                                  <ArrowDown size={13} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Right: Release Exposure & Delete Buttons */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              {/* Release Exposure Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleDirectorNote(note.id)}
+                                style={{
+                                  background: "rgba(239, 68, 68, 0.12)",
+                                  border: "1.5px solid rgba(239, 68, 68, 0.5)",
+                                  color: "#f87171",
+                                  padding: "6px 14px",
+                                  fontSize: "12px",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  borderRadius: "2px",
+                                  transition: "all 0.15s ease",
+                                }}
+                                title="클릭 시 메인 노출을 해제하고 이 순위 목록에서 제외합니다"
+                              >
+                                <EyeOff size={13} color="#f87171" />
+                                <span>메인 노출 해제</span>
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDirectorNote(note.id, index)}
+                                style={{
+                                  background: "transparent",
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                  color: "#888",
+                                  padding: "6px 10px",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  borderRadius: "2px",
+                                }}
+                                title="디렉터스 노트 삭제"
+                              >
+                                <Trash2 size={13} />
+                                <span>삭제</span>
+                              </button>
+                            </div>
+                          </div>
+
+                        {/* Note Card Body (Editor & Live Preview Grid) */}
+                        <div
+                          style={{
+                            padding: "20px 22px",
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                            gap: "24px",
+                            alignItems: "start",
+                          }}
+                        >
+                          {/* Form Inputs Column */}
+                          <div>
+                            {/* Quote Textarea */}
+                            <div style={{ marginBottom: "16px" }}>
+                              <label style={{ display: "block", fontSize: "12px", color: "#f59e0b", fontWeight: 700, marginBottom: "6px" }}>
+                                한국어/원문 인용구·명대사 문구 (Quote) *
+                              </label>
+                              <textarea
+                                rows={4}
+                                value={note.quote}
+                                onChange={(e) => handleUpdateDirectorNote(note.id, "quote", e.target.value)}
+                                placeholder="인용구 또는 감독의 코멘트를 입력하세요."
+                                style={{
+                                  width: "100%",
+                                  background: "#080808",
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                  color: "#fff",
+                                  padding: "12px",
+                                  fontSize: "16px",
+                                  fontFamily: "'Noto Serif KR', serif",
+                                  lineHeight: "1.6",
+                                  outline: "none",
+                                  boxSizing: "border-box",
+                                }}
+                              />
+                            </div>
+
+                            {/* Attribution Row: Director Name & Film Title */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+                              <div>
+                                <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
+                                  감독/인물명 (선택)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={note.directorName || ""}
+                                  placeholder="예: Jean-Luc Godard"
+                                  onChange={(e) => handleUpdateDirectorNote(note.id, "directorName", e.target.value)}
+                                  style={{
+                                    width: "100%",
+                                    background: "#080808",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                    color: "#fff",
+                                    padding: "8px 12px",
+                                    fontSize: "12px",
+                                    outline: "none",
+                                    boxSizing: "border-box",
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
+                                  관련 영화 제목 (선택)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={note.filmTitle || ""}
+                                  placeholder="예: Contempt / 경멸"
+                                  onChange={(e) => handleUpdateDirectorNote(note.id, "filmTitle", e.target.value)}
+                                  style={{
+                                    width: "100%",
+                                    background: "#080808",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                    color: "#fff",
+                                    padding: "8px 12px",
+                                    fontSize: "12px",
+                                    outline: "none",
+                                    boxSizing: "border-box",
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Background Photo URL */}
+                            <div>
+                              <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
+                                배경 사진 이미지 URL (구글 드라이브 링크 지원, 비워두면 다크 시네마 그래픽)
+                              </label>
+                              <input
+                                type="text"
+                                value={note.photo || ""}
+                                placeholder="https://drive.google.com/... 또는 https://... 이미지 링크"
+                                onChange={(e) => handleUpdateDirectorNote(note.id, "photo", e.target.value)}
+                                style={{
+                                  width: "100%",
+                                  background: "#080808",
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                  color: "#fff",
+                                  padding: "8px 12px",
+                                  fontSize: "12px",
+                                  outline: "none",
+                                  fontFamily: "monospace",
+                                  boxSizing: "border-box",
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Live Preview Column */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                              <span style={{ fontSize: "11px", fontWeight: 700, color: "#888", letterSpacing: "0.08em" }}>
+                                📺 실시간 메인 노출 미리보기
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: 800,
+                                  color: isExposed ? "#4ade80" : "#888",
+                                }}
+                              >
+                                {isExposed ? `[${index + 1}순위 메인 노출]` : "[메인 숨김]"}
+                              </span>
+                            </div>
+
+                            <div
+                              style={{
+                                position: "relative",
+                                width: "100%",
+                                height: "230px",
+                                background: "#111",
+                                backgroundImage: previewPhoto ? `url(${previewPhoto})` : undefined,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                                overflow: "hidden",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "flex-end",
+                                padding: "20px",
+                                boxSizing: "border-box",
+                              }}
+                            >
+                              {/* Dark gradient overlay matching website */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  background: previewPhoto
+                                    ? "linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.92) 100%)"
+                                    : "linear-gradient(135deg, #2b2b2a, #141413)",
+                                  pointerEvents: "none",
+                                }}
+                              />
+
+                              {/* Preview Quote Content */}
+                              <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
+                                <p
+                                  style={{
+                                    fontFamily: "'Noto Serif KR', serif",
+                                    fontSize: "15px",
+                                    color: "#fff",
+                                    lineHeight: "1.5",
+                                    margin: "0 0 10px",
+                                    textShadow: "0 2px 10px rgba(0,0,0,0.7)",
+                                  }}
+                                >
+                                  “{note.quote || "인용구 문구를 입력해 주세요."}”
+                                </p>
+                                {(note.directorName || note.filmTitle) && (
+                                  <div
+                                    style={{
+                                      fontSize: "11px",
+                                      letterSpacing: "0.08em",
+                                      textTransform: "uppercase",
+                                      color: "rgba(255,255,255,0.8)",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "6px",
+                                    }}
+                                  >
+                                    {note.directorName && <span style={{ fontWeight: 700 }}>— {note.directorName}</span>}
+                                    {note.filmTitle && <span style={{ color: "#f59e0b" }}>〈{note.filmTitle}〉</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
+
+              {/* Collapsible Unexposed Drawer */}
+              {unexposedNotes.length > 0 && (
+                <details
+                  style={{
+                    background: "#0d0d0d",
+                    border: "1px dashed rgba(255,255,255,0.18)",
+                    padding: "16px 20px",
+                    marginTop: "24px",
+                  }}
+                >
+                  <summary
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: "#aaa",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                  >
+                    <span>
+                      미노출 디렉터스 노트 ({unexposedNotes.length}개) — 필요한 경우 메인 화면에 다시 추가할 수 있습니다.
+                    </span>
+                    <span style={{ fontSize: "11px", color: "#f59e0b" }}>목록 펼치기 / 접기 ▾</span>
+                  </summary>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+                    {unexposedNotes.map((note, unexpIdx) => {
+                      const previewPhoto = resolveAssetUrl(note.photo || "");
+                      return (
+                        <div
+                          key={note.id || unexpIdx}
+                          style={{
+                            background: "#141414",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            padding: "14px 18px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "16px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0, flex: 1 }}>
+                            {previewPhoto ? (
+                              <img
+                                alt=""
+                                src={previewPhoto}
+                                style={{ width: "45px", height: "45px", objectFit: "cover", opacity: 0.6, borderRadius: "2px" }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: "45px",
+                                  height: "45px",
+                                  background: "#222",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "18px",
+                                  opacity: 0.5,
+                                }}
+                              >
+                                🎬
+                              </div>
+                            )}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div
+                                style={{
+                                  fontSize: "13px",
+                                  color: "#ccc",
+                                  fontStyle: "italic",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                “{note.quote || "(인용구 없음)"}”
+                              </div>
+                              <div style={{ fontSize: "11px", color: "#777", marginTop: "4px" }}>
+                                {note.directorName ? `— ${note.directorName}` : ""} {note.filmTitle ? `〈${note.filmTitle}〉` : ""}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleDirectorNote(note.id)}
+                              style={{
+                                background: "#10b981",
+                                border: "none",
+                                color: "#000",
+                                padding: "6px 14px",
+                                fontSize: "11px",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                borderRadius: "2px",
+                              }}
+                            >
+                              <Eye size={12} strokeWidth={2.5} />
+                              <span>+ 메인에 노출하기</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDirectorNote(note.id)}
+                              style={{
+                                background: "transparent",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                                color: "#ef4444",
+                                padding: "6px 10px",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                borderRadius: "2px",
+                              }}
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              )}
             </div>
-          )}
+          );
+        })()}
 
           {/* TAB 4: ABOUT SECTION */}
           {activeTab === "about" && (
