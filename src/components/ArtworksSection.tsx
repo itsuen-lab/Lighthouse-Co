@@ -282,6 +282,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
                     alt={`${item.title} artwork poster`}
                     className="artwork-poster-img"
                     loading={index < 3 ? "eager" : "lazy"}
+                    decoding={index < 3 ? "sync" : "async"}
                     src={resolveAssetUrl(item.imageUrl)}
                     draggable={false}
                     onError={(e) => {

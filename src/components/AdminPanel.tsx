@@ -264,8 +264,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       release: "2026.12.01",
       director: "Director Name",
       year: "2026",
-      heroImage: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1920&q=80",
-      posterImage: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1200&q=80",
+      heroImage: "",
+      posterImage: "",
       summary: "English synopsis goes here.",
       summaryKo: "한국어 시놉시스를 입력하세요.",
       country: "Korea",
@@ -720,7 +720,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       subtitle: "새로운 기획 프로젝트 소개 문구를 입력하세요.",
       ctaText: "STORE / EXPLORE",
       url: "mailto:keeper@lighthouse.re.kr?subject=Special%20Project",
-      image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80",
+      image: "",
       visible: true,
     };
 

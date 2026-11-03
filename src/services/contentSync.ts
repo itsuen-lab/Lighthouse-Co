@@ -183,6 +183,15 @@ export function getStoredLocalContent(): SiteContent | null {
     if (typeof window !== "undefined" && window.localStorage) {
       const saved = window.localStorage.getItem("lighthouse_content");
       if (saved) {
+        // Stale sample data detector: purge if contains legacy unsplash samples or outdated mock featured
+        if (
+          saved.includes("images.unsplash.com") ||
+          saved.includes("ae0c4f96-7ccc-11e7-83c9-6be3df13972a") ||
+          (saved.includes('"celine"') && saved.includes('"eureka"') && saved.includes('"contempt"') && !saved.includes('"remake"'))
+        ) {
+          window.localStorage.removeItem("lighthouse_content");
+          return INITIAL_CONTENT;
+        }
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === "object") {
           return normalizeContent(parsed);

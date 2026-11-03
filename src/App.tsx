@@ -7,10 +7,13 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
 import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus } from "lucide-react";
-import { AdminPanel } from "./components/AdminPanel.tsx";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
 import { ArtworksSection } from "./components/ArtworksSection.tsx";
 import { resolveAssetUrl } from "./utils/assets.ts";
+
+const AdminPanel = React.lazy(() =>
+  import("./components/AdminPanel.tsx").then((m) => ({ default: m.AdminPanel }))
+);
 
 function getYouTubeVideoId(url?: string): string | null {
   if (!url) return null;
@@ -59,6 +62,14 @@ export default function App() {
     const saved = safeGetStorage("lighthouse_content");
     if (saved) {
       try {
+        if (
+          saved.includes("images.unsplash.com") ||
+          saved.includes("ae0c4f96-7ccc-11e7-83c9-6be3df13972a") ||
+          (saved.includes('"celine"') && saved.includes('"eureka"') && saved.includes('"contempt"') && !saved.includes('"remake"'))
+        ) {
+          safeRemoveStorage("lighthouse_content");
+          return INITIAL_CONTENT;
+        }
         return normalizeContent(JSON.parse(saved));
       } catch {
         return INITIAL_CONTENT;
@@ -491,19 +502,38 @@ export default function App() {
       pending = false;
       if (activeFilmId) return;
 
-      scenesRef.current.forEach((scene, index) => {
-        if (!scene) return;
-        if (reducedMotion.matches) {
+      const count = scenesRef.current.length;
+      if (count === 0) return;
+
+      const vh = window.innerHeight || 1;
+      const isReduced = reducedMotion.matches;
+
+      // Phase 1: Batch READ all rects (zero layout thrashing)
+      const rects: (DOMRect | null)[] = new Array(count);
+      for (let i = 0; i < count; i++) {
+        const el = scenesRef.current[i];
+        rects[i] = el ? el.getBoundingClientRect() : null;
+      }
+
+      // Phase 2: Batch WRITE all styles
+      for (let index = 0; index < count; index++) {
+        const scene = scenesRef.current[index];
+        const rect = rects[index];
+        if (!scene || !rect) continue;
+
+        if (isReduced) {
           scene.style.setProperty("--curtain-shade", "0");
           scene.style.setProperty("--text-shift", "0px");
           scene.style.setProperty("--text-opacity", "1");
-          return;
+          continue;
         }
 
-        const vh = window.innerHeight || 1;
-        const rect = scene.getBoundingClientRect();
-        const nextScene = scenesRef.current[index + 1];
-        const nextRect = nextScene ? nextScene.getBoundingClientRect() : null;
+        // Skip scenes far outside viewport to save style calculation and paint cycles
+        if (rect.bottom < -200 || rect.top > vh * 2) {
+          continue;
+        }
+
+        const nextRect = rects[index + 1];
         const coverProgress = nextRect ? clamp(1 - nextRect.top / vh, 0, 1) : 0;
         const shade = coverProgress * 0.35;
         const p = clamp((rect.top - vh * 0.14) / vh, -1, 1);
@@ -514,7 +544,7 @@ export default function App() {
           "--text-opacity",
           String(Math.max(0.75, 1 - Math.abs(p) * 0.15))
         );
-      });
+      }
     };
 
     const requestPaint = () => {
@@ -838,6 +868,7 @@ export default function App() {
                       alt=""
                       className="bg"
                       loading={index === 0 ? "eager" : "lazy"}
+                      decoding={index === 0 ? "sync" : "async"}
                       src={slideImg}
                       onError={(e) => {
                         const img = e.currentTarget;
@@ -1038,6 +1069,8 @@ export default function App() {
                       <img
                         alt="LIGHTHOUSE FEATURED PROJECT"
                         className="promo-photo"
+                        loading="lazy"
+                        decoding="async"
                         src={resolveAssetUrl(item.image)}
                         onError={(e) => {
                           const img = e.currentTarget;
@@ -1786,19 +1819,45 @@ export default function App() {
         }}
       />
 
-      {/* Admin Panel Full Management Interface */}
+      {/* Admin Panel Full Management Interface (Lazy Loaded) */}
       {isAdminOpen && (
-        <AdminPanel
-          content={content}
-          onSave={handleSaveAdmin}
-          onClose={handleCloseAdmin}
-          onReset={handleResetAdmin}
-          onLogout={handleLogout}
-          currentPassword={adminPassword}
-          onPasswordChange={handlePasswordChange}
-          stealthMode={stealthMode}
-          onToggleStealth={handleToggleStealth}
-        />
+        <React.Suspense
+          fallback={
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 100,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(0, 0, 0, 0.85)",
+                backdropFilter: "blur(8px)",
+                color: "#f59e0b",
+                gap: "12px",
+                fontSize: "12px",
+                letterSpacing: "0.15em",
+                fontWeight: 700,
+              }}
+            >
+              <Loader2 className="animate-spin" size={28} />
+              <span>ADMIN PANEL INITIALIZING...</span>
+            </div>
+          }
+        >
+          <AdminPanel
+            content={content}
+            onSave={handleSaveAdmin}
+            onClose={handleCloseAdmin}
+            onReset={handleResetAdmin}
+            onLogout={handleLogout}
+            currentPassword={adminPassword}
+            onPasswordChange={handlePasswordChange}
+            stealthMode={stealthMode}
+            onToggleStealth={handleToggleStealth}
+          />
+        </React.Suspense>
       )}
     </>
   );
