@@ -1,12 +1,13 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Film } from "../data/content.ts";
 import { resolveAssetUrl } from "../utils/assets.ts";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 
 interface ArtworksSectionProps {
   films: Film[];
   mainArtworkIds?: string[];
   onSelectFilm: (id: string) => void;
+  onZoomImage?: (item: { url: string; title: string; titleKo?: string; type?: string; designer?: string }) => void;
 }
 
 interface ArtworkDisplayItem {
@@ -24,6 +25,7 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
   films,
   mainArtworkIds,
   onSelectFilm,
+  onZoomImage,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -275,21 +277,67 @@ export const ArtworksSection: React.FC<ArtworksSectionProps> = ({
               }}
               title={`${item.title} — 상세보기`}
             >
-              <div className="artwork-poster-frame">
+              <div className="artwork-poster-frame" style={{ position: "relative" }}>
                 {item.imageUrl ? (
-                  <img
-                    alt={`${item.title} artwork poster`}
-                    className="artwork-poster-img"
-                    loading={index < 3 ? "eager" : "lazy"}
-                    decoding={index < 3 ? "sync" : "async"}
-                    src={resolveAssetUrl(item.imageUrl)}
-                    draggable={false}
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.onerror = null;
-                      target.style.opacity = "0";
-                    }}
-                  />
+                  <>
+                    <img
+                      alt={`${item.title} artwork poster`}
+                      className="artwork-poster-img"
+                      loading={index < 3 ? "eager" : "lazy"}
+                      decoding={index < 3 ? "sync" : "async"}
+                      src={resolveAssetUrl(item.imageUrl)}
+                      draggable={false}
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.style.opacity = "0";
+                      }}
+                    />
+                    {onZoomImage && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onZoomImage({
+                            url: item.imageUrl,
+                            title: item.title,
+                            titleKo: item.filmTitleKo,
+                            type: item.artworkType || "포스터",
+                            designer: item.designer,
+                          });
+                        }}
+                        title="포스터 확대보기"
+                        style={{
+                          position: "absolute",
+                          top: "10px",
+                          right: "10px",
+                          background: "rgba(0, 0, 0, 0.72)",
+                          border: "1px solid rgba(255, 255, 255, 0.35)",
+                          color: "#fff",
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          zIndex: 5,
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "scale(1.1)";
+                          e.currentTarget.style.background = "#000";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "scale(1)";
+                          e.currentTarget.style.background = "rgba(0, 0, 0, 0.72)";
+                        }}
+                      >
+                        <ZoomIn size={14} />
+                      </button>
+                    )}
+                  </>
                 ) : null}
               </div>
 

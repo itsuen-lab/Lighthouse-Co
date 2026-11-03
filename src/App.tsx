@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
-import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus } from "lucide-react";
+import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus, ZoomIn, X, ExternalLink } from "lucide-react";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
 import { ArtworksSection } from "./components/ArtworksSection.tsx";
 import { resolveAssetUrl } from "./utils/assets.ts";
@@ -112,6 +112,29 @@ export default function App() {
 
   const [activeFilmId, setActiveFilmId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(7);
+
+  // Poster & Artwork Lightbox Zoom Modal State
+  interface LightboxItem {
+    url: string;
+    title: string;
+    titleKo?: string;
+    type?: string;
+    designer?: string;
+    subtitle?: string;
+  }
+  const [lightboxImage, setLightboxImage] = useState<LightboxItem | null>(null);
+
+  // Close lightbox on Escape key
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLightboxImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxImage]);
   
   // Security & Admin Authentication State
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -986,6 +1009,7 @@ export default function App() {
             films={content.films}
             mainArtworkIds={content.mainArtworkIds}
             onSelectFilm={(id) => openFilmDetail(id)}
+            onZoomImage={(item) => setLightboxImage(item)}
           />
         )}
 
@@ -1473,8 +1497,26 @@ export default function App() {
                   <div className="detail-poster-col">
                     <div className="detail-media-label">
                       <span>OFFICIAL POSTER</span>
+                      <span style={{ fontSize: "10px", color: "#888", display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                        <ZoomIn size={10} /> 클릭하여 확대
+                      </span>
                     </div>
-                    <div className="detail-poster-frame">
+                    <div
+                      className="detail-poster-frame"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        setLightboxImage({
+                          url: activeFilm.posterImage,
+                          title: activeFilm.title,
+                          titleKo: activeFilm.titleKo,
+                          type: "OFFICIAL POSTER",
+                          designer: activeFilm.artworkDesigner,
+                        })
+                      }
+                      title={`${activeFilm.title} 공식 포스터 (클릭하여 확대보기)`}
+                      style={{ cursor: "zoom-in" }}
+                    >
                       <img
                         alt={`${activeFilm.title} Official Poster`}
                         src={activeFilm.posterImage}
@@ -1483,6 +1525,9 @@ export default function App() {
                           if (col) col.style.display = "none";
                         }}
                       />
+                      <div className="detail-artwork-zoom-icon">
+                        <ZoomIn size={14} />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1680,7 +1725,20 @@ export default function App() {
                     <div
                       key={art.id}
                       className="detail-artwork-item"
-                      title={`${activeFilm.title} - ${art.type}${art.designer ? ` (Designed by ${art.designer})` : ""}${art.title ? ` - ${art.title}` : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        setLightboxImage({
+                          url: art.imageUrl,
+                          title: activeFilm.title,
+                          titleKo: activeFilm.titleKo,
+                          type: art.type,
+                          designer: art.designer,
+                          subtitle: art.title,
+                        })
+                      }
+                      title={`${activeFilm.title} - ${art.type}${art.designer ? ` (Designed by ${art.designer})` : ""}${art.title ? ` - ${art.title}` : ""} (클릭하여 확대보기)`}
+                      style={{ cursor: "zoom-in" }}
                     >
                       <img
                         alt={`${activeFilm.title} ${art.type}`}
@@ -1690,6 +1748,9 @@ export default function App() {
                           if (item) item.style.display = "none";
                         }}
                       />
+                      <div className="detail-artwork-zoom-icon">
+                        <ZoomIn size={14} />
+                      </div>
                       <div className="detail-artwork-overlay">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
                           <span className="detail-artwork-type-badge">{art.type}</span>
@@ -1861,6 +1922,181 @@ export default function App() {
           }
         }}
       />
+
+      {/* Lightbox / Zoom Modal for Posters and Artworks */}
+      {lightboxImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="포스터 및 아트워크 확대보기"
+          onClick={() => setLightboxImage(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0, 0, 0, 0.94)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            animation: "fadeIn 0.2s ease-out",
+            cursor: "zoom-out",
+          }}
+        >
+          {/* Top Bar with Title & Close Button */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              padding: "20px 28px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)",
+              zIndex: 10,
+              cursor: "default",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+              {lightboxImage.type && (
+                <span
+                  style={{
+                    background: "#f59e0b",
+                    color: "#000",
+                    fontWeight: 800,
+                    fontSize: "11px",
+                    padding: "3px 8px",
+                    borderRadius: "2px",
+                    letterSpacing: "0.06em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {lightboxImage.type}
+                </span>
+              )}
+              <div style={{ color: "#fff", fontSize: "15px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span>{lightboxImage.title}</span>
+                {lightboxImage.titleKo && (
+                  <span style={{ color: "#aaa", marginLeft: "8px", fontSize: "13px" }}>
+                    {lightboxImage.titleKo}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <a
+                href={resolveAssetUrl(lightboxImage.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: "rgba(255,255,255,0.12)",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  borderRadius: "2px",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease",
+                }}
+                title="새 탭에서 원본 이미지 열기"
+              >
+                <ExternalLink size={13} />
+                <span style={{ fontSize: "11px" }}>원본 보기</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                style={{
+                  background: "rgba(255,255,255,0.18)",
+                  border: "none",
+                  color: "#fff",
+                  width: "36px",
+                  height: "36px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  transition: "background 0.2s ease",
+                }}
+                title="닫기 (ESC)"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Central Zoom Image Frame */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              maxWidth: "min(90vw, 1100px)",
+              maxHeight: "78vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 25px 60px rgba(0, 0, 0, 0.8)",
+              cursor: "default",
+            }}
+          >
+            <img
+              src={resolveAssetUrl(lightboxImage.url)}
+              alt={lightboxImage.title}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "78vh",
+                objectFit: "contain",
+                display: "block",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
+                userSelect: "none",
+              }}
+            />
+          </div>
+
+          {/* Bottom Info Bar */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              marginTop: "16px",
+              textAlign: "center",
+              maxWidth: "600px",
+              padding: "10px 20px",
+              background: "rgba(18, 18, 18, 0.85)",
+              borderRadius: "4px",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              backdropFilter: "blur(8px)",
+              cursor: "default",
+            }}
+          >
+            {lightboxImage.subtitle && (
+              <div style={{ color: "#eee", fontSize: "13px", fontWeight: 500, marginBottom: "4px" }}>
+                {lightboxImage.subtitle}
+              </div>
+            )}
+            {lightboxImage.designer && (
+              <div style={{ color: "#f59e0b", fontSize: "11px", letterSpacing: "0.08em", fontWeight: 700 }}>
+                DESIGNED BY {lightboxImage.designer.toUpperCase()}
+              </div>
+            )}
+            <div style={{ color: "#777", fontSize: "11px", marginTop: "4px" }}>
+              화면 바깥을 클릭하거나 ESC 키를 누르면 닫힙니다.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Panel Full Management Interface (Lazy Loaded) */}
       {isAdminOpen && (
