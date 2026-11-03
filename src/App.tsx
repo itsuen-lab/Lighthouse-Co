@@ -1991,30 +1991,6 @@ export default function App() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <a
-                href={resolveAssetUrl(lightboxImage.url)}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                  color: "#fff",
-                  padding: "6px 12px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  borderRadius: "2px",
-                  textDecoration: "none",
-                  transition: "all 0.2s ease",
-                }}
-                title="새 탭에서 원본 이미지 열기"
-              >
-                <ExternalLink size={13} />
-                <span style={{ fontSize: "11px" }}>원본 보기</span>
-              </a>
-
               <button
                 type="button"
                 onClick={() => setLightboxImage(null)}
