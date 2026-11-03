@@ -1042,7 +1042,11 @@ export default function App() {
                         style={photoUrl ? { backgroundImage: `url(${photoUrl})` } : undefined}
                       >
                         <div className="director-note__content">
-                          <p className="director-note__quote-ko" lang="ko">
+                          <p
+                            className="director-note__quote-ko"
+                            lang="ko"
+                            style={{ whiteSpace: "pre-line", wordBreak: "keep-all" }}
+                          >
                             {note.quote}
                           </p>
                           {(note.directorName || note.filmTitle) && (
@@ -1556,11 +1560,11 @@ export default function App() {
           })()}
           <div className="details">
             <div>
-              <p style={{ marginBottom: "1.5rem" }}>
+              <p style={{ marginBottom: "1.5rem", whiteSpace: "pre-line" }}>
                 {activeFilm.summaryKo || activeFilm.summary}
               </p>
               {activeFilm.summaryKo && (
-                <p style={{ color: "#aaa", fontSize: "0.95em" }}>
+                <p style={{ color: "#aaa", fontSize: "0.95em", whiteSpace: "pre-line" }}>
                   {activeFilm.summary}
                 </p>
               )}

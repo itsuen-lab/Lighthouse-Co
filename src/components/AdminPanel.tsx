@@ -4527,8 +4527,9 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                           <div>
                             {/* Quote Textarea */}
                             <div style={{ marginBottom: "16px" }}>
-                              <label style={{ display: "block", fontSize: "12px", color: "#f59e0b", fontWeight: 700, marginBottom: "6px" }}>
-                                한국어/원문 인용구·명대사 문구 (Quote) *
+                              <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px", color: "#f59e0b", fontWeight: 700, marginBottom: "6px", flexWrap: "wrap", gap: "6px" }}>
+                                <span>한국어/원문 인용구·명대사 문구 (Quote) *</span>
+                                <span style={{ fontSize: "11px", color: "#aaa", fontWeight: 400 }}>↵ 엔터 줄바꿈이 화면에 그대로 반영됩니다</span>
                               </label>
                               <textarea
                                 rows={4}
@@ -4679,6 +4680,8 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                     lineHeight: "1.5",
                                     margin: "0 0 10px",
                                     textShadow: "0 2px 10px rgba(0,0,0,0.7)",
+                                    whiteSpace: "pre-line",
+                                    wordBreak: "keep-all",
                                   }}
                                 >
                                   “{note.quote || "인용구 문구를 입력해 주세요."}”

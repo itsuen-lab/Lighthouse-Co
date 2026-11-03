@@ -856,6 +856,8 @@ button:focus-visible {
   letter-spacing: -0.06em;
   margin: 0 !important;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  white-space: pre-line !important;
+  word-break: keep-all;
 }
 
 .director-note__quote-ko::before {
