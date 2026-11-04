@@ -1138,25 +1138,32 @@ export default function App() {
           <h2>ABOUT.</h2>
           <div className="about-bilingual">
             <div className="about-ko" lang="ko">
-              <p>
-                라이트하우스는 예술영화관 프로그래머에 의해 설립된 영화 수입/배급사입니다.
-              </p>
-              <p>
-                영화 프로그램의 맥락을 배급과 연결 시켜, 동시대 관객들에게 가장 유효한 영화를 선보입니다.
-              </p>
-              <p>
-                가장 영화적인 언어를 마케팅에 적용해 영화 산업의 저변을 확대하고, 새로운 경험을 발명합니다.
-              </p>
+              {(() => {
+                const koText = content.about?.ko ?? INITIAL_CONTENT.about?.ko ?? "";
+                const paragraphs = koText.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+                if (paragraphs.length === 0 && koText.trim()) {
+                  return <p style={{ whiteSpace: "pre-line" }}>{koText}</p>;
+                }
+                return paragraphs.map((paragraph, idx) => (
+                  <p key={idx} style={{ whiteSpace: "pre-line" }}>
+                    {paragraph}
+                  </p>
+                ));
+              })()}
             </div>
             <div className="about-en" lang="en">
-              <p>
-                Lighthouse Co. is a Korean art-house film distributor founded on extensive
-                experience in cinema programming and film festival planning. The team is
-                led by former theater programmers and includes in-house design and marketing
-                staff, as well as a studio capable of DCP production. We are committed to
-                introducing each film with care, respecting both its context and the
-                environment in which it is screened.
-              </p>
+              {(() => {
+                const enText = content.about?.en ?? INITIAL_CONTENT.about?.en ?? "";
+                const paragraphs = enText.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+                if (paragraphs.length === 0 && enText.trim()) {
+                  return <p style={{ whiteSpace: "pre-line" }}>{enText}</p>;
+                }
+                return paragraphs.map((paragraph, idx) => (
+                  <p key={idx} style={{ whiteSpace: "pre-line" }}>
+                    {paragraph}
+                  </p>
+                ));
+              })()}
             </div>
           </div>
 

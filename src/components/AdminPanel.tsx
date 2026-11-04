@@ -353,6 +353,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     showToast(`메인 화면 저널 섹션이 [${nextVal ? "노출" : "숨김"}] 처리되었습니다.`);
   };
 
+  const handleAboutChange = (field: "ko" | "en", value: string) => {
+    const cur = data.about || INITIAL_CONTENT.about || { ko: "", en: "" };
+    const nextAbout = {
+      ...cur,
+      [field]: value,
+    };
+    const nextData: SiteContent = {
+      ...data,
+      about: nextAbout,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+  };
+
   // Film Handlers
   const handleFilmChange = (id: string, field: keyof Film, value: any) => {
     let sanitizedValue = value;
@@ -6139,44 +6154,66 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
 
           {/* TAB 4: ABOUT SECTION */}
           {activeTab === "about" && (
-            <div style={{ maxWidth: "800px" }}>
-              <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
-                ABOUT 섹션 관리
-              </h2>
-              <p style={{ margin: "0 0 28px", color: "#888", fontSize: "13px" }}>
-                회사 소개 국/영문 바이링구얼 문구를 편집합니다.
-              </p>
+            <div style={{ maxWidth: "860px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 6px", letterSpacing: "-0.03em" }}>
+                    ABOUT 섹션 관리
+                  </h2>
+                  <p style={{ margin: 0, color: "#888", fontSize: "13px" }}>
+                    회사 소개 국/영문 바이링구얼 문구를 편집합니다. 줄바꿈과 단락 구분이 실시간으로 메인 화면에 반영됩니다.
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "12px", color: "#10b981", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", padding: "4px 10px", borderRadius: "3px" }}>
+                    ✓ 실시간 자동 저장 및 클라우드 동기화
+                  </span>
+                </div>
+              </div>
 
-              <div style={{ background: "#101010", border: "1px solid rgba(255,255,255,0.12)", padding: "28px" }}>
-                <label style={{ display: "block", fontSize: "12px", color: "#aaa", marginBottom: "8px" }}>
-                  한국어 소개 (줄바꿈으로 단락 구분)
-                </label>
+              <div style={{ background: "#101010", border: "1px solid rgba(255,255,255,0.12)", padding: "28px", marginTop: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                    한국어 소개 (Korean)
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#888" }}>
+                    줄바꿈(엔터) 및 빈 줄을 넣으면 메인 화면에서도 그대로 줄바꿈/단락으로 출력됩니다
+                  </span>
+                </div>
                 <textarea
-                  rows={6}
-                  defaultValue={
-                    "라이트하우스는 예술영화관 프로그래머에 의해 설립된 영화 수입/배급사입니다.\n\n영화 프로그램의 맥락을 배급과 연결 시켜, 동시대 관객들에게 가장 유효한 영화를 선보입니다.\n\n가장 영화적인 언어를 마케팅에 적용해 영화 산업의 저변을 확대하고, 새로운 경험을 발명합니다."
-                  }
+                  rows={7}
+                  value={data.about?.ko ?? (INITIAL_CONTENT.about?.ko || "")}
+                  onChange={(e) => handleAboutChange("ko", e.target.value)}
+                  placeholder="한국어 소개 문구를 입력하세요..."
                   style={{
                     width: "100%",
                     background: "#080808",
                     border: "1px solid rgba(255,255,255,0.2)",
                     color: "#fff",
                     padding: "14px",
-                    fontSize: "15px",
+                    fontSize: "14px",
                     lineHeight: "1.7",
                     outline: "none",
+                    borderRadius: "2px",
+                    boxSizing: "border-box",
+                    resize: "vertical",
                   }}
                 />
 
-                <div style={{ marginTop: "24px" }}>
-                  <label style={{ display: "block", fontSize: "12px", color: "#aaa", marginBottom: "8px" }}>
-                    영문 소개 (English Description)
-                  </label>
+                <div style={{ marginTop: "28px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                      영문 소개 (English)
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#888" }}>
+                      Line breaks and paragraphs will be displayed as written
+                    </span>
+                  </div>
                   <textarea
-                    rows={6}
-                    defaultValue={
-                      "Lighthouse Co. is a Korean art-house film distributor founded on extensive experience in cinema programming and film festival planning. The team is led by former theater programmers and includes in-house design and marketing staff, as well as a studio capable of DCP production. We are committed to introducing each film with care, respecting both its context and the environment in which it is screened."
-                    }
+                    rows={7}
+                    value={data.about?.en ?? (INITIAL_CONTENT.about?.en || "")}
+                    onChange={(e) => handleAboutChange("en", e.target.value)}
+                    placeholder="Enter English description here..."
                     style={{
                       width: "100%",
                       background: "#080808",
@@ -6187,8 +6224,36 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                       lineHeight: "1.7",
                       outline: "none",
                       fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                      borderRadius: "2px",
+                      boxSizing: "border-box",
+                      resize: "vertical",
                     }}
                   />
+                </div>
+
+                <div style={{ marginTop: "24px", paddingTop: "18px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                  <div style={{ fontSize: "12px", color: "#777" }}>
+                    * 텍스트를 입력하는 즉시 메인 페이지 ABOUT 섹션과 데이터베이스에 실시간으로 반영됩니다.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSave(data);
+                      showToast("ABOUT 섹션 소개 문구가 안전하게 저장되었습니다.");
+                    }}
+                    style={{
+                      background: "#e50914",
+                      border: "none",
+                      color: "#fff",
+                      padding: "8px 18px",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      borderRadius: "3px",
+                    }}
+                  >
+                    저장 확인
+                  </button>
                 </div>
               </div>
             </div>
