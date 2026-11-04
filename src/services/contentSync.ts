@@ -66,6 +66,14 @@ export function normalizeContent(raw: any): SiteContent {
           film.artworkDesigner = (film as any).artworkDesigner.trim();
         }
 
+        if (typeof (film as any).bylinePrefix === "string") {
+          film.bylinePrefix = (film as any).bylinePrefix.trim();
+        }
+
+        if (typeof (film as any).directorLabel === "string") {
+          film.directorLabel = (film as any).directorLabel.trim();
+        }
+
         if (Array.isArray(film.artworks)) {
           film.artworks = film.artworks
             .map((art: any) => {

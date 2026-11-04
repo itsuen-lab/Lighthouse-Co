@@ -377,10 +377,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     ) {
       sanitizedValue = formatGoogleDriveImageUrl(value);
     }
-    setData((prev) => ({
-      ...prev,
-      films: prev.films.map((f) => (f.id === id ? { ...f, [field]: sanitizedValue } : f)),
-    }));
+    const nextFilms = data.films.map((f) => (f.id === id ? { ...f, [field]: sanitizedValue } : f));
+    const nextData: SiteContent = {
+      ...data,
+      films: nextFilms,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+  };
+
+  const handleFilmPatch = (id: string, patch: Partial<Film>) => {
+    const nextFilms = data.films.map((f) => {
+      if (f.id !== id) return f;
+      const updated = { ...f, ...patch };
+      if (typeof patch.heroImage === "string") updated.heroImage = formatGoogleDriveImageUrl(patch.heroImage);
+      if (typeof patch.posterImage === "string") updated.posterImage = formatGoogleDriveImageUrl(patch.posterImage);
+      if (typeof patch.mainArtworkImage === "string") updated.mainArtworkImage = formatGoogleDriveImageUrl(patch.mainArtworkImage);
+      return updated;
+    });
+    const nextData: SiteContent = {
+      ...data,
+      films: nextFilms,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
   };
 
   const handleAddNewIndividualArtwork = () => {
@@ -2084,13 +2106,176 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         />
                       </div>
 
+                      {/* Byline Prefix Selector (A FILM BY vs A PROGRAM BY) */}
+                      <div
+                        style={{
+                          gridColumn: "1 / -1",
+                          background: "#080808",
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          padding: "16px 18px",
+                          borderRadius: "2px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "10px",
+                            flexWrap: "wrap",
+                            gap: "8px",
+                          }}
+                        >
+                          <label
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              color: "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span>바이라인 수식어 표기 (영화 / 프로그램 구분)</span>
+                            <span style={{ fontSize: "11px", color: "#888", fontWeight: 400 }}>
+                              * 상세 페이지에서 감독/기획자 명 앞에 노출되는 문구입니다
+                            </span>
+                          </label>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: "#f59e0b",
+                              fontFamily: "monospace",
+                              background: "rgba(245,158,11,0.1)",
+                              padding: "3px 8px",
+                              border: "1px solid rgba(245,158,11,0.25)",
+                              borderRadius: "2px",
+                            }}
+                          >
+                            미리보기: {(currentFilm.bylinePrefix?.trim() || "A FILM BY").toUpperCase()}{currentFilm.director ? ` ${currentFilm.director.toUpperCase()}` : ""}{currentFilm.year ? ` · ${currentFilm.year}` : ""}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleFilmPatch(currentFilm.id, { bylinePrefix: "A FILM BY", directorLabel: "DIRECTOR" })}
+                            style={{
+                              padding: "8px 16px",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              background:
+                                currentFilm.bylinePrefix === "A FILM BY" || (!currentFilm.bylinePrefix && currentFilm.directorLabel === "DIRECTOR")
+                                  ? "#ffffff"
+                                  : "#1c1c1c",
+                              color:
+                                currentFilm.bylinePrefix === "A FILM BY" || (!currentFilm.bylinePrefix && currentFilm.directorLabel === "DIRECTOR")
+                                  ? "#000000"
+                                  : "#aaaaaa",
+                              border:
+                                "1px solid " +
+                                (currentFilm.bylinePrefix === "A FILM BY" || (!currentFilm.bylinePrefix && currentFilm.directorLabel === "DIRECTOR")
+                                  ? "#ffffff"
+                                  : "rgba(255,255,255,0.2)"),
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                              borderRadius: "2px",
+                            }}
+                          >
+                            🎬 A FILM BY (영화)
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleFilmPatch(currentFilm.id, { bylinePrefix: "A PROGRAM BY", directorLabel: "PROGRAMMER" })}
+                            style={{
+                              padding: "8px 16px",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              background:
+                                currentFilm.bylinePrefix === "A PROGRAM BY" || (!currentFilm.bylinePrefix && currentFilm.directorLabel !== "DIRECTOR")
+                                  ? "#e50914"
+                                  : "#1c1c1c",
+                              color:
+                                currentFilm.bylinePrefix === "A PROGRAM BY" || (!currentFilm.bylinePrefix && currentFilm.directorLabel !== "DIRECTOR")
+                                  ? "#ffffff"
+                                  : "#aaaaaa",
+                              border:
+                                "1px solid " +
+                                (currentFilm.bylinePrefix === "A PROGRAM BY" || (!currentFilm.bylinePrefix && currentFilm.directorLabel !== "DIRECTOR")
+                                  ? "#e50914"
+                                  : "rgba(255,255,255,0.2)"),
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                              borderRadius: "2px",
+                            }}
+                          >
+                            📽️ A PROGRAM BY (프로그램)
+                          </button>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: "220px" }}>
+                            <span style={{ fontSize: "11px", color: "#888", whiteSpace: "nowrap" }}>직접 입력:</span>
+                            <input
+                              type="text"
+                              placeholder="예: A FILM BY, A PROGRAM BY, CURATED BY..."
+                              value={currentFilm.bylinePrefix || ""}
+                              onChange={(e) => handleFilmChange(currentFilm.id, "bylinePrefix", e.target.value)}
+                              style={{
+                                flex: 1,
+                                background: "#080808",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#fff",
+                                padding: "8px 12px",
+                                fontSize: "12px",
+                                outline: "none",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Informational notice: empty metadata won't appear */}
+                      <div
+                        style={{
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px dashed rgba(255,255,255,0.18)",
+                          padding: "10px 14px",
+                          borderRadius: "3px",
+                          fontSize: "12px",
+                          color: "#ccc",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        💡 <strong>상세 페이지 표시 안내:</strong> 프로그래머/디렉터, 연도, 개봉일, 국가, 러닝타임 중 내용을 쓰지 않고 빈칸으로 두면 상세 페이지에서 해당 항목이 자동으로 숨겨집니다.
+                      </div>
+
+                      {/* Programmer / Director */}
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
-                          감독 (Director)
-                        </label>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                          <label style={{ fontSize: "11px", color: "#aaa" }}>
+                            프로그래머 / 디렉터 이름 (Name)
+                          </label>
+                          {currentFilm.director && (
+                            <button
+                              type="button"
+                              onClick={() => handleFilmChange(currentFilm.id, "director", "")}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#e50914",
+                                fontSize: "11px",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              ✕ 비우기 (상세 페이지에서 미표시)
+                            </button>
+                          )}
+                        </div>
                         <input
                           type="text"
-                          value={currentFilm.director}
+                          placeholder="미입력 시 상세 페이지에 나타나지 않음"
+                          value={currentFilm.director || ""}
                           onChange={(e) => handleFilmChange(currentFilm.id, "director", e.target.value)}
                           style={{
                             width: "100%",
@@ -2102,15 +2287,88 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                             outline: "none",
                           }}
                         />
+
+                        {/* Role Label selection */}
+                        <div style={{ marginTop: "8px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "11px", color: "#888", marginRight: "4px" }}>상세 역할 표기:</span>
+                          {[
+                            { label: "📽️ 프로그래머 (PROGRAMMER)", value: "PROGRAMMER" },
+                            { label: "🎬 디렉터 (DIRECTOR)", value: "DIRECTOR" },
+                            { label: "큐레이터 (CURATOR)", value: "CURATOR" },
+                          ].map((role) => {
+                            const activeRole = (
+                              currentFilm.directorLabel ||
+                              (currentFilm.bylinePrefix === "A FILM BY" ? "DIRECTOR" : "PROGRAMMER")
+                            ).toUpperCase();
+                            const isSelected = activeRole === role.value;
+                            return (
+                              <button
+                                key={role.value}
+                                type="button"
+                                onClick={() => handleFilmChange(currentFilm.id, "directorLabel", role.value)}
+                                style={{
+                                  padding: "4px 10px",
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  background: isSelected ? "#ffffff" : "#181818",
+                                  color: isSelected ? "#000000" : "#aaaaaa",
+                                  border: `1px solid ${isSelected ? "#ffffff" : "rgba(255,255,255,0.15)"}`,
+                                  cursor: "pointer",
+                                  borderRadius: "2px",
+                                }}
+                              >
+                                {role.label}
+                              </button>
+                            );
+                          })}
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginLeft: "4px" }}>
+                            <span style={{ fontSize: "10px", color: "#666" }}>직접 입력:</span>
+                            <input
+                              type="text"
+                              placeholder="예: PROGRAMMER..."
+                              value={currentFilm.directorLabel || ""}
+                              onChange={(e) => handleFilmChange(currentFilm.id, "directorLabel", e.target.value)}
+                              style={{
+                                width: "120px",
+                                background: "#080808",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#fff",
+                                padding: "4px 8px",
+                                fontSize: "11px",
+                                outline: "none",
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
 
+                      {/* Year */}
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
-                          제작 연도 (Year)
-                        </label>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                          <label style={{ fontSize: "11px", color: "#aaa" }}>
+                            제작 연도 (Year)
+                          </label>
+                          {currentFilm.year && (
+                            <button
+                              type="button"
+                              onClick={() => handleFilmChange(currentFilm.id, "year", "")}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#e50914",
+                                fontSize: "11px",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              ✕ 비우기 (상세 페이지에서 미표시)
+                            </button>
+                          )}
+                        </div>
                         <input
                           type="text"
-                          value={currentFilm.year}
+                          placeholder="미입력 시 상세 페이지에 나타나지 않음 (예: 2026)"
+                          value={currentFilm.year || ""}
                           onChange={(e) => handleFilmChange(currentFilm.id, "year", e.target.value)}
                           style={{
                             width: "100%",
@@ -2124,14 +2382,33 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         />
                       </div>
 
+                      {/* Release */}
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
-                          국내 개봉일 (예: 2026.09.30)
-                        </label>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                          <label style={{ fontSize: "11px", color: "#aaa" }}>
+                            국내 개봉일 (예: 2026.09.30)
+                          </label>
+                          {currentFilm.release && (
+                            <button
+                              type="button"
+                              onClick={() => handleFilmChange(currentFilm.id, "release", "")}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#e50914",
+                                fontSize: "11px",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              ✕ 비우기 (상세 페이지에서 미표시)
+                            </button>
+                          )}
+                        </div>
                         <input
                           type="text"
                           value={currentFilm.release || ""}
-                          placeholder="미정일 경우 빈칸"
+                          placeholder="미입력 시 상세 페이지에 나타나지 않음"
                           onChange={(e) => handleFilmChange(currentFilm.id, "release", e.target.value)}
                           style={{
                             width: "100%",
@@ -2145,14 +2422,33 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                         />
                       </div>
 
+                      {/* Country & Runtime */}
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px" }}>
-                          국가 및 러닝타임 (예: France / 193 min)
-                        </label>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                          <label style={{ fontSize: "11px", color: "#aaa" }}>
+                            국가 및 러닝타임 (Country & Runtime)
+                          </label>
+                          {(currentFilm.country || currentFilm.runtime) && (
+                            <button
+                              type="button"
+                              onClick={() => handleFilmPatch(currentFilm.id, { country: "", runtime: "" })}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#e50914",
+                                fontSize: "11px",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              ✕ 둘 다 비우기
+                            </button>
+                          )}
+                        </div>
                         <div style={{ display: "flex", gap: "10px" }}>
                           <input
                             type="text"
-                            placeholder="국가"
+                            placeholder="국가 (미입력 시 숨김)"
                             value={currentFilm.country || ""}
                             onChange={(e) => handleFilmChange(currentFilm.id, "country", e.target.value)}
                             style={{
@@ -2167,11 +2463,11 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                           />
                           <input
                             type="text"
-                            placeholder="러닝타임"
+                            placeholder="러닝타임 (미입력 시 숨김)"
                             value={currentFilm.runtime || ""}
                             onChange={(e) => handleFilmChange(currentFilm.id, "runtime", e.target.value)}
                             style={{
-                              width: "110px",
+                              width: "160px",
                               background: "#080808",
                               border: "1px solid rgba(255,255,255,0.2)",
                               color: "#fff",

@@ -47,6 +47,8 @@ export interface Film {
   artworks?: (string | ArtworkEntry)[];
   showInMainArtworks?: boolean;
   mainArtworkImage?: string;
+  bylinePrefix?: string; // 바이라인 수식어 (예: "A FILM BY", "A PROGRAM BY", 직접 입력)
+  directorLabel?: string; // 역할 표기 라벨 (예: "PROGRAMMER", "DIRECTOR", 직접 입력)
 }
 
 export interface PromoCard {

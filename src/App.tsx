@@ -1012,14 +1012,14 @@ export default function App() {
                       href={`#film-${slide.id}`}
                       onClick={(e) => openFilmDetail(slide.id, e)}
                     >
-                      EXPLORE FILM ↗
+                      EXPLORE ↗
                     </a>
                   ) : (
                     <a
                       className="feature-link"
                       href={slide.url}
                     >
-                      {slide.ctaText || "STORE / EXPLORE"} ↗
+                      {slide.ctaText ? (slide.ctaText.includes("↗") ? slide.ctaText : `${slide.ctaText} ↗`) : "EXPLORE ↗"}
                     </a>
                   )}
                 </div>
@@ -1659,9 +1659,30 @@ export default function App() {
           </button>
           <h1>{activeFilm.title}</h1>
           <div className="detail-ko">{activeFilm.titleKo}</div>
-          <div className="byline">
-            A FILM BY {activeFilm.director.toUpperCase()} · {activeFilm.year}
-          </div>
+          {(() => {
+            const hasDirector = Boolean(activeFilm.director && activeFilm.director.trim());
+            const hasYear = Boolean(activeFilm.year && activeFilm.year.trim());
+            const hasCustomPrefix = Boolean(activeFilm.bylinePrefix && activeFilm.bylinePrefix.trim());
+
+            if (!hasDirector && !hasYear && !hasCustomPrefix) {
+              return null;
+            }
+
+            const prefixUpper = (activeFilm.bylinePrefix?.trim() || "").toUpperCase();
+            const isExplicitFilm = prefixUpper === "A FILM BY" || (activeFilm.directorLabel?.toUpperCase() === "DIRECTOR");
+            const defaultPrefix = isExplicitFilm ? "A FILM BY" : "A PROGRAM BY";
+            const prefix = (activeFilm.bylinePrefix?.trim() || defaultPrefix).toUpperCase();
+
+            let text = prefix;
+            if (hasDirector) {
+              text += ` ${activeFilm.director.trim().toUpperCase()}`;
+            }
+            if (hasYear) {
+              text += hasDirector ? ` · ${activeFilm.year.trim()}` : ` ${activeFilm.year.trim()}`;
+            }
+
+            return <div className="byline">{text}</div>;
+          })()}
           {activeFilm.heroImage ? (
             <img
               alt={activeFilm.title}
@@ -1761,13 +1782,26 @@ export default function App() {
               )}
             </div>
             <aside>
-              <div>DIRECTOR — {activeFilm.director}</div>
-              <div>YEAR — {activeFilm.year}</div>
-              {activeFilm.release && (
-                <div>RELEASE IN KOREA — {activeFilm.release}</div>
-              )}
-              {activeFilm.country && <div>COUNTRY — {activeFilm.country}</div>}
-              {activeFilm.runtime && <div>RUNTIME — {activeFilm.runtime}</div>}
+              {activeFilm.director && activeFilm.director.trim() ? (() => {
+                const isExplicitFilm = (activeFilm.bylinePrefix?.trim() || "").toUpperCase() === "A FILM BY";
+                const roleLabel = (
+                  activeFilm.directorLabel?.trim() ||
+                  (isExplicitFilm && !activeFilm.directorLabel ? "DIRECTOR" : "PROGRAMMER")
+                ).toUpperCase();
+                return <div>{roleLabel} — {activeFilm.director.trim()}</div>;
+              })() : null}
+              {activeFilm.year && activeFilm.year.trim() ? (
+                <div>YEAR — {activeFilm.year.trim()}</div>
+              ) : null}
+              {activeFilm.release && activeFilm.release.trim() ? (
+                <div>RELEASE IN KOREA — {activeFilm.release.trim()}</div>
+              ) : null}
+              {activeFilm.country && activeFilm.country.trim() ? (
+                <div>COUNTRY — {activeFilm.country.trim()}</div>
+              ) : null}
+              {activeFilm.runtime && activeFilm.runtime.trim() ? (
+                <div>RUNTIME — {activeFilm.runtime.trim()}</div>
+              ) : null}
               {activeFilm.bookingButtonVisible !== false && (
                 <div style={{ marginTop: "1.5rem" }}>
                   <a
