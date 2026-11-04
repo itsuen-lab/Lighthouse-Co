@@ -2079,22 +2079,51 @@ export default function App() {
             className="journal-page active"
             id="journal-page"
           >
-            {/* Top Navigation Bar */}
+            {/* Top Navigation Bar: Identical typographic style to main site menu */}
             <div className="journal-page-top-bar">
-              <button
-                className="journal-page-back-btn"
-                type="button"
-                onClick={closeJournalPage}
-                title="홈 화면으로 이동"
-              >
-                <ArrowLeft size={14} />
-                <span>← HOME</span>
-              </button>
-              <div className="journal-page-breadcrumb">
-                <span>LIGHTHOUSE / JOURNAL BOARD</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={closeJournalPage}
+                  className="journal-nav-link"
+                  title="홈 화면으로 이동"
+                >
+                  <ArrowLeft size={13} />
+                  <span>HOME</span>
+                </button>
+                <span style={{ color: "rgba(255,255,255,0.25)", fontSize: "11px" }}>/</span>
+                <nav style={{ display: "flex", alignItems: "center", gap: "18px", flexWrap: "wrap" }} aria-label="Journal Page Navigation">
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection("programs", e)}
+                    className="journal-nav-link"
+                  >
+                    PROGRAMS
+                  </button>
+                  <span className="journal-nav-link active" aria-current="page">
+                    JOURNAL
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection("about", e)}
+                    className="journal-nav-link"
+                  >
+                    ABOUT
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => scrollToSection("contact", e)}
+                    className="journal-nav-link"
+                  >
+                    CONTACT
+                  </button>
+                </nav>
               </div>
-              <div style={{ fontSize: "11px", color: "#888", letterSpacing: "0.08em" }}>
-                <span>게시글 {visiblePosts.length}편</span>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                <span style={{ fontFamily: 'Arial, "Helvetica Neue", sans-serif', fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", color: "#888884" }}>
+                  {visiblePosts.length} ARTICLES
+                </span>
               </div>
             </div>
 
@@ -2104,38 +2133,50 @@ export default function App() {
                 <div className="journal-article-top-action">
                   <button
                     type="button"
-                    className="journal-page-back-btn"
+                    className="journal-nav-link"
                     onClick={() => {
                       setReadingJournalPost(null);
                       window.location.hash = "journal";
                     }}
                   >
-                    <ArrowLeft size={14} />
-                    <span>전체 글 목록으로 (BACK TO LIST)</span>
+                    <ArrowLeft size={13} />
+                    <span>BACK TO JOURNAL INDEX</span>
                   </button>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "11px", color: "#888" }}>
-                      {currentIdx + 1} / {visiblePosts.length}
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <span style={{ fontSize: "11px", color: "#888", letterSpacing: "0.1em" }}>
+                      #{String(currentIdx + 1).padStart(2, "0")} / {visiblePosts.length}
                     </span>
+                    <button
+                      type="button"
+                      onClick={closeJournalPage}
+                      className="journal-nav-link"
+                      title="홈 화면으로 이동"
+                    >
+                      <span>HOME →</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="journal-article-kicker-bar">
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "16px", marginBottom: "20px" }}>
                   <span className="journal-card-tag">{currentPost.category || "ESSAY"}</span>
-                  <span style={{ fontSize: "12px", color: "#888", letterSpacing: "0.05em" }}>
-                    {currentPost.date}
-                  </span>
-                  {currentPost.author && (
-                    <span style={{ fontSize: "12px", color: "#f59e0b", letterSpacing: "0.05em", fontWeight: 600 }}>
-                      · {currentPost.author}
-                    </span>
-                  )}
+                  <span style={{ fontSize: "12px", color: "#888", letterSpacing: "0.05em" }}>{currentPost.date}</span>
                 </div>
 
                 <h1 className="journal-article-title">{currentPost.title}</h1>
                 {currentPost.subtitle && (
                   <p className="journal-article-subtitle">{currentPost.subtitle}</p>
                 )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px", paddingBottom: "18px", borderBottom: "1px solid rgba(255,255,255,0.12)", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "12px", color: "#f59e0b", letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase" }}>
+                    WORDS BY {currentPost.author || "LIGHTHOUSE PROGRAMMER"}
+                  </span>
+                  <span style={{ color: "#555" }}>·</span>
+                  <span style={{ fontSize: "12px", color: "#888" }}>
+                    LIGHTHOUSE EDITORIAL ARCHIVE
+                  </span>
+                </div>
 
                 {currentPost.imageUrl && (
                   <div
@@ -2180,20 +2221,41 @@ export default function App() {
                   {currentPost.content}
                 </div>
 
-                {/* Article Bottom Navigation (Prev / Next) */}
-                <div className="journal-article-nav-footer">
+                {/* Magazine Footer Sign-off */}
+                <div style={{ padding: "28px 0", borderTop: "1px solid rgba(255,255,255,0.12)", borderBottom: "1px solid rgba(255,255,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "40px" }}>
                   <div>
+                    <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.14em", color: "#fff", textTransform: "uppercase" }}>
+                      LIGHTHOUSE CO. CINEMA JOURNAL
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeJournalPage}
+                    className="journal-nav-link"
+                  >
+                    <span>← HOME</span>
+                  </button>
+                </div>
+
+                {/* Article Bottom Navigation (Prev / Next with Magazine Preview) */}
+                <div className="journal-article-nav-footer">
+                  <div style={{ flex: 1, minWidth: "220px" }}>
                     {prevPost ? (
-                      <button
-                        type="button"
+                      <div
                         onClick={() => openJournalPage(prevPost.id)}
-                        className="journal-page-back-btn"
-                        style={{ textAlign: "left" }}
+                        style={{ cursor: "pointer", padding: "16px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.12)", transition: "all 0.2s ease" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
                       >
-                        <span>← 이전 글: {prevPost.title.slice(0, 24)}...</span>
-                      </button>
+                        <div style={{ fontSize: "10px", letterSpacing: "0.14em", color: "#888", textTransform: "uppercase", marginBottom: "6px" }}>
+                          ← PREVIOUS ARTICLE
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
+                          {prevPost.title}
+                        </div>
+                      </div>
                     ) : (
-                      <span style={{ fontSize: "12px", color: "#555" }}>첫 번째 글입니다</span>
+                      <span style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#555" }}>FIRST ARTICLE OF ISSUE</span>
                     )}
                   </div>
 
@@ -2203,57 +2265,64 @@ export default function App() {
                       setReadingJournalPost(null);
                       window.location.hash = "journal";
                     }}
-                    style={{
-                      background: "#222",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      color: "#fff",
-                      padding: "8px 18px",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
+                    className="journal-nav-link"
+                    style={{ padding: "10px 22px", border: "1px solid rgba(255,255,255,0.2)" }}
                   >
-                    전체 목록
+                    <span>ALL ARTICLES LIST</span>
                   </button>
 
-                  <div>
+                  <div style={{ flex: 1, minWidth: "220px", textAlign: "right" }}>
                     {nextPost ? (
-                      <button
-                        type="button"
+                      <div
                         onClick={() => openJournalPage(nextPost.id)}
-                        className="journal-page-back-btn"
-                        style={{ textAlign: "right" }}
+                        style={{ cursor: "pointer", padding: "16px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.12)", textAlign: "right", transition: "all 0.2s ease" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
                       >
-                        <span>다음 글: {nextPost.title.slice(0, 24)}... →</span>
-                      </button>
+                        <div style={{ fontSize: "10px", letterSpacing: "0.14em", color: "#888", textTransform: "uppercase", marginBottom: "6px" }}>
+                          NEXT ARTICLE →
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
+                          {nextPost.title}
+                        </div>
+                      </div>
                     ) : (
-                      <span style={{ fontSize: "12px", color: "#555" }}>마지막 글입니다</span>
+                      <span style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#555" }}>LATEST ARTICLE OF ISSUE</span>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              /* If not reading an individual post: render board list */
+              /* If not reading an individual post: render magazine board list */
               <div>
-                <header className="journal-page-header">
-                  <div className="journal-kicker">CINEMA ARCHIVE &amp; CRITIQUE</div>
-                  <h1>JOURNAL.</h1>
-                </header>
+                {/* Magazine Masthead Top Metadata Strip */}
+                <div className="journal-magazine-meta-strip" style={{ marginBottom: "28px" }}>
+                  <span>CINEMA &amp; ARCHIVE</span>
+                  <span>LIGHTHOUSE JOURNAL</span>
+                  <span>SEOUL, KOREA</span>
+                </div>
 
-                {/* Toolbar */}
+                {/* Editorial Toolbar: Category Tabs & Search */}
                 <div className="journal-page-toolbar">
-                  {/* Category Filter Pills */}
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                    {categories.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        className={`journal-filter-btn ${journalCategoryFilter === cat ? "active" : ""}`}
-                        onClick={() => setJournalCategoryFilter(cat)}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+                  {/* Category Filter Tabs with counts */}
+                  <div className="journal-magazine-tabs">
+                    {categories.map((cat) => {
+                      const count =
+                        cat === "ALL"
+                          ? visiblePosts.length
+                          : visiblePosts.filter((p) => (p.category || "").trim().toUpperCase() === cat).length;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          className={`journal-magazine-tab-btn ${journalCategoryFilter === cat ? "active" : ""}`}
+                          onClick={() => setJournalCategoryFilter(cat)}
+                        >
+                          <span>{cat}</span>
+                          <span style={{ fontSize: "10px", opacity: 0.65 }}>({count})</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* Search Bar & View Mode Toggle */}
@@ -2263,8 +2332,9 @@ export default function App() {
                         type="text"
                         value={journalSearchQuery}
                         onChange={(e) => setJournalSearchQuery(e.target.value)}
-                        placeholder="글 제목, 내용, 필자 검색..."
+                        placeholder="SEARCH ARCHIVE &amp; ESSAYS..."
                         className="journal-page-search-input"
+                        style={{ letterSpacing: "0.04em" }}
                       />
                       <Search size={14} className="journal-page-search-icon" />
                       {journalSearchQuery && (
@@ -2294,7 +2364,7 @@ export default function App() {
                         type="button"
                         onClick={() => setJournalViewMode("grid")}
                         className={`journal-page-view-btn ${journalViewMode === "grid" ? "active" : ""}`}
-                        title="그리드 카드 뷰"
+                        title="매거진 에디토리얼 레이아웃"
                       >
                         <LayoutGrid size={15} />
                       </button>
@@ -2302,7 +2372,7 @@ export default function App() {
                         type="button"
                         onClick={() => setJournalViewMode("table")}
                         className={`journal-page-view-btn ${journalViewMode === "table" ? "active" : ""}`}
-                        title="리스트 게시판 테이블 뷰"
+                        title="인덱스 목록 뷰"
                       >
                         <List size={15} />
                       </button>
@@ -2310,7 +2380,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Posts Display */}
+                {/* Posts Display: Magazine Layout or Table */}
                 {filteredPosts.length === 0 ? (
                   <div style={{ padding: "80px 20px", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", color: "#888" }}>
                     <BookOpen size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
@@ -2361,73 +2431,172 @@ export default function App() {
                     </table>
                   </div>
                 ) : (
-                  /* Grid Card View */
-                  <div className="journal-grid">
-                    {filteredPosts.map((post) => (
-                      <article
-                        key={post.id}
-                        className="journal-card"
-                        tabIndex={0}
-                        onClick={() => openJournalPage(post.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openJournalPage(post.id);
-                          }
-                        }}
-                      >
-                        {post.imageUrl ? (
-                          <div className="journal-card-media">
-                            <img
-                              alt={post.title}
-                              className="journal-card-img"
-                              loading="lazy"
-                              decoding="async"
-                              src={resolveAssetUrl(post.imageUrl)}
-                              onError={(e) => {
-                                const target = e.currentTarget;
-                                target.onerror = null;
-                                const parent = target.parentElement;
-                                if (parent) parent.style.display = "none";
+                  /* Magazine Editorial Layout */
+                  <div>
+                    {/* Featured Cover Story (First Article) */}
+                    {(() => {
+                      const coverPost = filteredPosts[0];
+                      const restPosts = filteredPosts.slice(1);
+
+                      return (
+                        <>
+                          {coverPost && (
+                            <article
+                              className="journal-magazine-cover"
+                              onClick={() => openJournalPage(coverPost.id)}
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openJournalPage(coverPost.id);
+                                }
                               }}
-                            />
-                          </div>
-                        ) : null}
+                            >
+                              {coverPost.imageUrl ? (
+                                <div className="journal-magazine-cover-media">
+                                  <img
+                                    alt={coverPost.title}
+                                    className="journal-magazine-cover-img"
+                                    src={resolveAssetUrl(coverPost.imageUrl)}
+                                    loading="lazy"
+                                    decoding="async"
+                                  />
+                                </div>
+                              ) : null}
 
-                        <div className="journal-card-body">
-                          <div className="journal-card-meta">
-                            <span className="journal-card-tag">{post.category || "ESSAY"}</span>
-                            <span className="journal-card-date">{post.date}</span>
-                          </div>
+                              <div className="journal-magazine-cover-body">
+                                <div className="journal-cover-kicker">
+                                  <span>COVER STORY</span>
+                                  <span>·</span>
+                                  <span>{coverPost.category || "ESSAY"}</span>
+                                  <span>·</span>
+                                  <span style={{ color: "#888" }}>{coverPost.date}</span>
+                                </div>
 
-                          <h3 className="journal-card-title">{post.title}</h3>
-                          {post.subtitle && (
-                            <p className="journal-card-sub">{post.subtitle}</p>
+                                <h2 className="journal-cover-headline">
+                                  {coverPost.title}
+                                </h2>
+
+                                {coverPost.subtitle && (
+                                  <p className="journal-cover-sub">
+                                    {coverPost.subtitle}
+                                  </p>
+                                )}
+
+                                <p className="journal-cover-snippet">
+                                  {coverPost.content}
+                                </p>
+
+                                <div className="journal-cover-footer">
+                                  <span>BY {coverPost.author || "LIGHTHOUSE"}</span>
+                                  <span style={{ color: "#e50914" }}>READ COVER STORY →</span>
+                                </div>
+                              </div>
+                            </article>
                           )}
 
-                          <p className="journal-card-snippet">{post.content}</p>
+                          {/* Secondary Multi-Column Magazine Grid */}
+                          {restPosts.length > 0 && (
+                            <div className="journal-magazine-grid">
+                              {restPosts.map((post, rIdx) => (
+                                <article
+                                  key={post.id}
+                                  className="journal-magazine-card"
+                                  tabIndex={0}
+                                  onClick={() => openJournalPage(post.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      openJournalPage(post.id);
+                                    }
+                                  }}
+                                >
+                                  {post.imageUrl ? (
+                                    <div className="journal-magazine-card-media">
+                                      <img
+                                        alt={post.title}
+                                        className="journal-magazine-card-img"
+                                        loading="lazy"
+                                        decoding="async"
+                                        src={resolveAssetUrl(post.imageUrl)}
+                                        onError={(e) => {
+                                          const target = e.currentTarget;
+                                          target.onerror = null;
+                                          const parent = target.parentElement;
+                                          if (parent) parent.style.display = "none";
+                                        }}
+                                      />
+                                    </div>
+                                  ) : null}
 
-                          <div className="journal-card-footer">
-                            <span>{post.author || "LIGHTHOUSE"}</span>
-                            <span className="journal-card-arrow">READ ARTICLE →</span>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
+                                  <div className="journal-magazine-card-body">
+                                    <div className="journal-magazine-card-meta">
+                                      <span className="journal-card-tag">{post.category || "ESSAY"}</span>
+                                      <span style={{ color: "#888884" }}>
+                                        NO. #{String(rIdx + 2).padStart(2, "0")} · {post.date}
+                                      </span>
+                                    </div>
+
+                                    <h3 className="journal-magazine-card-title">{post.title}</h3>
+                                    {post.subtitle && (
+                                      <p className="journal-magazine-card-sub">{post.subtitle}</p>
+                                    )}
+
+                                    <p className="journal-magazine-card-snippet">{post.content}</p>
+
+                                    <div className="journal-magazine-card-footer">
+                                      <span>BY {post.author || "LIGHTHOUSE"}</span>
+                                      <span className="journal-card-arrow">READ STORY →</span>
+                                    </div>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
-                {/* Bottom Back to Home Button */}
-                <div style={{ marginTop: "60px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+                {/* Bottom Magazine Footer / Navigation */}
+                <div style={{ marginTop: "70px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,0.14)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
                   <button
                     type="button"
                     onClick={closeJournalPage}
-                    className="journal-page-back-btn"
+                    className="journal-nav-link"
+                    title="홈 화면으로 이동"
                   >
-                    <span>← HOME으로 돌아가기</span>
+                    <ArrowLeft size={13} />
+                    <span>HOME</span>
                   </button>
-                  <span style={{ fontSize: "11px", color: "#666", letterSpacing: "0.1em" }}>
-                    LIGHTHOUSE CO. CINEMA JOURNAL ARCHIVE
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={(e) => scrollToSection("programs", e)}
+                      className="journal-nav-link"
+                    >
+                      PROGRAMS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => scrollToSection("about", e)}
+                      className="journal-nav-link"
+                    >
+                      ABOUT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => scrollToSection("contact", e)}
+                      className="journal-nav-link"
+                    >
+                      CONTACT
+                    </button>
+                  </div>
+
+                  <span style={{ fontSize: "11px", letterSpacing: "0.14em", color: "#666", textTransform: "uppercase" }}>
+                    LIGHTHOUSE CO. CINEMA ARCHIVE
                   </span>
                 </div>
               </div>
