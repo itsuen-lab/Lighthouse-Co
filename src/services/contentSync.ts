@@ -212,6 +212,29 @@ export function normalizeContent(raw: any): SiteContent {
     };
   }
 
+  // 7. Validate & sanitize journalPosts
+  base.journalVisible = base.journalVisible !== false;
+  if (Array.isArray(base.journalPosts) && base.journalPosts.length > 0) {
+    base.journalPosts = base.journalPosts
+      .filter((p) => p && typeof p === "object" && typeof p.id === "string")
+      .map((p, idx) => ({
+        id: p.id || `journal-${idx + 1}`,
+        title: typeof p.title === "string" ? p.title.trim() : "Untitled",
+        subtitle: typeof p.subtitle === "string" ? p.subtitle.trim() : "",
+        date: typeof p.date === "string" ? p.date.trim() : new Date().toISOString().slice(0, 10).replace(/-/g, "."),
+        category: typeof p.category === "string" ? p.category.trim() : "ESSAY",
+        imageUrl: typeof p.imageUrl === "string" ? formatGoogleDriveImageUrl(p.imageUrl) : "",
+        content: typeof p.content === "string" ? p.content : "",
+        author: typeof p.author === "string" ? p.author.trim() : "LIGHTHOUSE",
+        visibleOnMain: typeof p.visibleOnMain === "boolean" ? p.visibleOnMain : p.visible !== false,
+        visibleOnBoard: typeof p.visibleOnBoard === "boolean" ? p.visibleOnBoard : p.visible !== false,
+        visible: (typeof p.visibleOnMain === "boolean" ? p.visibleOnMain : p.visible !== false) ||
+                 (typeof p.visibleOnBoard === "boolean" ? p.visibleOnBoard : p.visible !== false),
+      }));
+  } else if (!Array.isArray(base.journalPosts)) {
+    base.journalPosts = INITIAL_CONTENT.journalPosts || [];
+  }
+
   return base;
 }
 

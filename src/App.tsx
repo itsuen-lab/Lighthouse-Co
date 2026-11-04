@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry } from "./data/content.ts";
+import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry, JournalPost } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
-import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus, ZoomIn, X, ExternalLink } from "lucide-react";
+import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus, ZoomIn, X, ExternalLink, Search, ArrowLeft, ArrowRight, LayoutGrid, List, BookOpen } from "lucide-react";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
 import { ArtworksSection } from "./components/ArtworksSection.tsx";
 import { resolveAssetUrl } from "./utils/assets.ts";
@@ -113,6 +113,13 @@ export default function App() {
   const [activeFilmId, setActiveFilmId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(7);
 
+  // Dedicated Journal Board Page State
+  const [isJournalPage, setIsJournalPage] = useState<boolean>(false);
+  const [readingJournalPost, setReadingJournalPost] = useState<JournalPost | null>(null);
+  const [journalCategoryFilter, setJournalCategoryFilter] = useState<string>("ALL");
+  const [journalSearchQuery, setJournalSearchQuery] = useState<string>("" );
+  const [journalViewMode, setJournalViewMode] = useState<"grid" | "table">("grid");
+
   // Poster & Artwork Lightbox Zoom Modal State
   interface LightboxItem {
     url: string;
@@ -124,17 +131,21 @@ export default function App() {
   }
   const [lightboxImage, setLightboxImage] = useState<LightboxItem | null>(null);
 
-  // Close lightbox on Escape key
+  // Journal Post Full Reader Modal State
+  const [activeJournalPost, setActiveJournalPost] = useState<JournalPost | null>(null);
+
+  // Close lightbox & journal reader on Escape key
   useEffect(() => {
-    if (!lightboxImage) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setLightboxImage(null);
+        if (lightboxImage) setLightboxImage(null);
+        if (activeJournalPost) setActiveJournalPost(null);
+        if (readingJournalPost) setReadingJournalPost(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxImage]);
+  }, [lightboxImage, activeJournalPost, readingJournalPost]);
   
   // Security & Admin Authentication State
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -317,6 +328,22 @@ export default function App() {
       requestAdminAccess();
       return;
     }
+
+    if (hash === "journal" || hash === "journal-page" || hash.startsWith("journal-")) {
+      setIsJournalPage(true);
+      setActiveFilmId(null);
+      if (hash.startsWith("journal-") && hash !== "journal-page") {
+        const postId = hash.replace("journal-", "");
+        const foundPost = (content.journalPosts || INITIAL_CONTENT.journalPosts || []).find((p) => p.id === postId);
+        if (foundPost) setReadingJournalPost(foundPost);
+      } else {
+        setReadingJournalPost(null);
+      }
+      window.scrollTo(0, 0);
+      return;
+    }
+    setIsJournalPage(false);
+
     if (hash.startsWith("film-")) {
       const filmId = hash.replace("film-", "");
       const found = (content.films || []).find((f) => f && f.id === filmId);
@@ -335,7 +362,7 @@ export default function App() {
         }
       });
     }
-  }, [content.films, requestAdminAccess]);
+  }, [content.films, content.journalPosts, requestAdminAccess]);
 
   useEffect(() => {
     window.addEventListener("hashchange", handleHashChange);
@@ -589,11 +616,34 @@ export default function App() {
 
   const openFilmDetail = (id: string, e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    setIsJournalPage(false);
+    setReadingJournalPost(null);
     window.location.hash = `film-${id}`;
   };
 
   const closeDetail = () => {
     setActiveFilmId(null);
+    window.location.hash = "home";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openJournalPage = (postId?: string) => {
+    setIsJournalPage(true);
+    setActiveFilmId(null);
+    if (postId) {
+      const found = (content.journalPosts || INITIAL_CONTENT.journalPosts || []).find((p) => p.id === postId);
+      setReadingJournalPost(found || null);
+      window.location.hash = `journal-${postId}`;
+    } else {
+      setReadingJournalPost(null);
+      window.location.hash = "journal";
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeJournalPage = () => {
+    setIsJournalPage(false);
+    setReadingJournalPost(null);
     window.location.hash = "home";
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -753,8 +803,10 @@ export default function App() {
     }
 
     e.preventDefault();
-    if (activeFilmId) {
+    if (activeFilmId || isJournalPage) {
       setActiveFilmId(null);
+      setIsJournalPage(false);
+      setReadingJournalPost(null);
       window.location.hash = "home";
     } else {
       window.history.pushState(null, "", "#home");
@@ -764,8 +816,14 @@ export default function App() {
 
   const scrollToSection = (sectionId: string, e: React.MouseEvent) => {
     e.preventDefault();
-    if (activeFilmId) {
+    if (sectionId === "journal") {
+      openJournalPage();
+      return;
+    }
+    if (activeFilmId || isJournalPage) {
       setActiveFilmId(null);
+      setIsJournalPage(false);
+      setReadingJournalPost(null);
       window.location.hash = sectionId;
       requestAnimationFrame(() => {
         document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
@@ -783,10 +841,16 @@ export default function App() {
   useEffect(() => {
     if (activeFilm) {
       document.title = `${activeFilm.title} — Lighthouse Co.`;
+    } else if (isJournalPage) {
+      if (readingJournalPost) {
+        document.title = `${readingJournalPost.title} — Lighthouse Journal`;
+      } else {
+        document.title = "Journal — Lighthouse Co.";
+      }
     } else {
       document.title = "Lighthouse Co.";
     }
-  }, [activeFilm]);
+  }, [activeFilm, isJournalPage, readingJournalPost]);
 
   return (
     <>
@@ -865,7 +929,7 @@ export default function App() {
       </header>
 
       {/* Main Site Container */}
-      <main id="site" className={activeFilm ? "hidden" : ""}>
+      <main id="site" className={activeFilm || isJournalPage ? "hidden" : ""}>
         {/* Featured Hero Sticky Curtain Stack */}
         <section
           aria-label="Featured films and projects"
@@ -1095,7 +1159,127 @@ export default function App() {
               </p>
             </div>
           </div>
+
+          {/* User Request: ABOUT 글 하단에 JOURNAL 네모 박스 링크 */}
+          <div className="about-journal-action">
+            <a
+              href="#journal"
+              className="about-journal-box-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                openJournalPage();
+              }}
+            >
+              JOURNAL
+            </a>
+          </div>
         </section>
+
+        {/* Journal Section (저널 게시판) */}
+        {content.journalVisible !== false && (() => {
+          const rawPosts = content.journalPosts && content.journalPosts.length > 0
+            ? content.journalPosts
+            : (INITIAL_CONTENT.journalPosts || []);
+          const visiblePosts = rawPosts.filter((p) => {
+            if (p.visibleOnMain !== undefined) return p.visibleOnMain === true;
+            return p.visible !== false;
+          });
+          if (visiblePosts.length === 0) return null;
+
+          const categories = [
+            "ALL",
+            ...Array.from(new Set(visiblePosts.map((p) => (p.category || "").trim().toUpperCase()).filter(Boolean))),
+          ];
+          const filteredPosts = journalCategoryFilter === "ALL"
+            ? visiblePosts
+            : visiblePosts.filter((p) => (p.category || "").trim().toUpperCase() === journalCategoryFilter);
+
+          return (
+            <section className="journal-section" id="journal" aria-label="Lighthouse Journal">
+              <div className="journal-header">
+                <div className="journal-kicker">ESSAYS, CRITIQUE &amp; CINEMA ARCHIVE</div>
+                <h2>JOURNAL.</h2>
+              </div>
+
+              {/* Category Filter Buttons */}
+              {categories.length > 2 && (
+                <div className="journal-filters" role="tablist">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      role="tab"
+                      aria-selected={journalCategoryFilter === cat}
+                      className={`journal-filter-btn ${journalCategoryFilter === cat ? "active" : ""}`}
+                      onClick={() => setJournalCategoryFilter(cat)}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Posts Grid */}
+              <div className="journal-grid">
+                {filteredPosts.map((post) => (
+                  <article
+                    key={post.id}
+                    className="journal-card"
+                    tabIndex={0}
+                    onClick={() => openJournalPage(post.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openJournalPage(post.id);
+                      }
+                    }}
+                  >
+                    {post.imageUrl ? (
+                      <div className="journal-card-media">
+                        <img
+                          alt={post.title}
+                          className="journal-card-img"
+                          loading="lazy"
+                          decoding="async"
+                          src={resolveAssetUrl(post.imageUrl)}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            const parent = target.parentElement;
+                            if (parent) parent.style.display = "none";
+                          }}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="journal-card-body">
+                      <div className="journal-card-meta">
+                        {post.category ? (
+                          <span className="journal-card-tag">{post.category}</span>
+                        ) : (
+                          <span className="journal-card-tag">JOURNAL</span>
+                        )}
+                        <span className="journal-card-date">{post.date}</span>
+                      </div>
+
+                      <h3 className="journal-card-title">{post.title}</h3>
+                      {post.subtitle && (
+                        <p className="journal-card-sub">{post.subtitle}</p>
+                      )}
+
+                      <p className="journal-card-snippet">{post.content}</p>
+
+                      <div className="journal-card-footer">
+                        <span>{post.author || "LIGHTHOUSE"}</span>
+                        <span className="journal-card-arrow">READ ARTICLE →</span>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Featured Projects / Promo Section */}
         {content.promosVisible !== false && (() => {
@@ -1849,6 +2033,402 @@ export default function App() {
         </article>
       )}
 
+      {/* Dedicated Journal Board Page (게시판 페이지) */}
+      {isJournalPage && (() => {
+        const rawPosts = content.journalPosts && content.journalPosts.length > 0
+          ? content.journalPosts
+          : (INITIAL_CONTENT.journalPosts || []);
+        const visiblePosts = rawPosts.filter((p) => {
+          if (p.visibleOnBoard !== undefined) return p.visibleOnBoard === true;
+          return p.visible !== false;
+        });
+
+        // Filter by category and search query
+        const categories = [
+          "ALL",
+          ...Array.from(new Set(visiblePosts.map((p) => (p.category || "").trim().toUpperCase()).filter(Boolean))),
+        ];
+
+        const filteredPosts = visiblePosts.filter((post) => {
+          const matchCat = journalCategoryFilter === "ALL" || (post.category || "").trim().toUpperCase() === journalCategoryFilter;
+          const query = journalSearchQuery.trim().toLowerCase();
+          const matchQuery = !query ||
+            post.title.toLowerCase().includes(query) ||
+            (post.subtitle && post.subtitle.toLowerCase().includes(query)) ||
+            (post.author && post.author.toLowerCase().includes(query)) ||
+            post.content.toLowerCase().includes(query);
+          return matchCat && matchQuery;
+        });
+
+        // Reading post index for prev/next navigation
+        const currentPost = readingJournalPost;
+        const currentIdx = currentPost ? visiblePosts.findIndex((p) => p.id === currentPost.id) : -1;
+        const prevPost = currentIdx > 0 ? visiblePosts[currentIdx - 1] : null;
+        const nextPost = currentIdx >= 0 && currentIdx < visiblePosts.length - 1 ? visiblePosts[currentIdx + 1] : null;
+
+        return (
+          <article
+            aria-live="polite"
+            className="journal-page active"
+            id="journal-page"
+          >
+            {/* Top Navigation Bar */}
+            <div className="journal-page-top-bar">
+              <button
+                className="journal-page-back-btn"
+                type="button"
+                onClick={closeJournalPage}
+                title="홈 화면으로 이동"
+              >
+                <ArrowLeft size={14} />
+                <span>← HOME</span>
+              </button>
+              <div className="journal-page-breadcrumb">
+                <span>LIGHTHOUSE / JOURNAL BOARD</span>
+              </div>
+              <div style={{ fontSize: "11px", color: "#888", letterSpacing: "0.08em" }}>
+                <span>게시글 {visiblePosts.length}편</span>
+              </div>
+            </div>
+
+            {/* If user is reading a specific post: render article view */}
+            {currentPost ? (
+              <div className="journal-article-container">
+                <div className="journal-article-top-action">
+                  <button
+                    type="button"
+                    className="journal-page-back-btn"
+                    onClick={() => {
+                      setReadingJournalPost(null);
+                      window.location.hash = "journal";
+                    }}
+                  >
+                    <ArrowLeft size={14} />
+                    <span>전체 글 목록으로 (BACK TO LIST)</span>
+                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "#888" }}>
+                      {currentIdx + 1} / {visiblePosts.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="journal-article-kicker-bar">
+                  <span className="journal-card-tag">{currentPost.category || "ESSAY"}</span>
+                  <span style={{ fontSize: "12px", color: "#888", letterSpacing: "0.05em" }}>
+                    {currentPost.date}
+                  </span>
+                  {currentPost.author && (
+                    <span style={{ fontSize: "12px", color: "#f59e0b", letterSpacing: "0.05em", fontWeight: 600 }}>
+                      · {currentPost.author}
+                    </span>
+                  )}
+                </div>
+
+                <h1 className="journal-article-title">{currentPost.title}</h1>
+                {currentPost.subtitle && (
+                  <p className="journal-article-subtitle">{currentPost.subtitle}</p>
+                )}
+
+                {currentPost.imageUrl && (
+                  <div
+                    className="journal-article-hero-wrap"
+                    title="클릭하여 원본 크기로 확대"
+                    onClick={() =>
+                      setLightboxImage({
+                        url: currentPost.imageUrl!,
+                        title: currentPost.title,
+                        subtitle: currentPost.subtitle,
+                        designer: currentPost.author,
+                      })
+                    }
+                  >
+                    <img
+                      alt={currentPost.title}
+                      className="journal-article-hero-img"
+                      src={resolveAssetUrl(currentPost.imageUrl)}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "12px",
+                        right: "12px",
+                        background: "rgba(0,0,0,0.78)",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                        padding: "5px 10px",
+                        fontSize: "11px",
+                        color: "#eee",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
+                    >
+                      <ZoomIn size={13} />
+                      <span>클릭하여 확대</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="journal-article-body">
+                  {currentPost.content}
+                </div>
+
+                {/* Article Bottom Navigation (Prev / Next) */}
+                <div className="journal-article-nav-footer">
+                  <div>
+                    {prevPost ? (
+                      <button
+                        type="button"
+                        onClick={() => openJournalPage(prevPost.id)}
+                        className="journal-page-back-btn"
+                        style={{ textAlign: "left" }}
+                      >
+                        <span>← 이전 글: {prevPost.title.slice(0, 24)}...</span>
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: "12px", color: "#555" }}>첫 번째 글입니다</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReadingJournalPost(null);
+                      window.location.hash = "journal";
+                    }}
+                    style={{
+                      background: "#222",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      color: "#fff",
+                      padding: "8px 18px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    전체 목록
+                  </button>
+
+                  <div>
+                    {nextPost ? (
+                      <button
+                        type="button"
+                        onClick={() => openJournalPage(nextPost.id)}
+                        className="journal-page-back-btn"
+                        style={{ textAlign: "right" }}
+                      >
+                        <span>다음 글: {nextPost.title.slice(0, 24)}... →</span>
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: "12px", color: "#555" }}>마지막 글입니다</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* If not reading an individual post: render board list */
+              <div>
+                <header className="journal-page-header">
+                  <div className="journal-kicker">CINEMA ARCHIVE &amp; CRITIQUE</div>
+                  <h1>JOURNAL.</h1>
+                </header>
+
+                {/* Toolbar */}
+                <div className="journal-page-toolbar">
+                  {/* Category Filter Pills */}
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        className={`journal-filter-btn ${journalCategoryFilter === cat ? "active" : ""}`}
+                        onClick={() => setJournalCategoryFilter(cat)}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Bar & View Mode Toggle */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <div className="journal-page-search-wrap">
+                      <input
+                        type="text"
+                        value={journalSearchQuery}
+                        onChange={(e) => setJournalSearchQuery(e.target.value)}
+                        placeholder="글 제목, 내용, 필자 검색..."
+                        className="journal-page-search-input"
+                      />
+                      <Search size={14} className="journal-page-search-icon" />
+                      {journalSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setJournalSearchQuery("")}
+                          style={{
+                            position: "absolute",
+                            right: "32px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            background: "transparent",
+                            border: "none",
+                            color: "#888",
+                            cursor: "pointer",
+                            padding: "4px",
+                          }}
+                          title="검색어 지우기"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="journal-page-view-toggles" role="group" aria-label="View mode">
+                      <button
+                        type="button"
+                        onClick={() => setJournalViewMode("grid")}
+                        className={`journal-page-view-btn ${journalViewMode === "grid" ? "active" : ""}`}
+                        title="그리드 카드 뷰"
+                      >
+                        <LayoutGrid size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setJournalViewMode("table")}
+                        className={`journal-page-view-btn ${journalViewMode === "table" ? "active" : ""}`}
+                        title="리스트 게시판 테이블 뷰"
+                      >
+                        <List size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Posts Display */}
+                {filteredPosts.length === 0 ? (
+                  <div style={{ padding: "80px 20px", textAlign: "center", border: "1px dashed rgba(255,255,255,0.15)", color: "#888" }}>
+                    <BookOpen size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+                    <p style={{ fontSize: "16px", color: "#ccc", margin: "0 0 6px" }}>등록된 게시글이 없거나 검색 결과가 없습니다.</p>
+                    <p style={{ fontSize: "13px", color: "#777", margin: 0 }}>다른 검색어나 카테고리를 선택해 보세요.</p>
+                  </div>
+                ) : journalViewMode === "table" ? (
+                  /* Table / List View */
+                  <div className="journal-table-wrap">
+                    <table className="journal-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "60px" }}>NO.</th>
+                          <th style={{ width: "110px" }}>CATEGORY</th>
+                          <th>TITLE / SUBJECT</th>
+                          <th style={{ width: "140px" }}>AUTHOR</th>
+                          <th style={{ width: "120px", textAlign: "right" }}>DATE</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPosts.map((post, idx) => (
+                          <tr
+                            key={post.id}
+                            className="journal-table-row"
+                            onClick={() => openJournalPage(post.id)}
+                          >
+                            <td style={{ color: "#777", fontSize: "12px", fontFamily: "monospace" }}>
+                              {String(idx + 1).padStart(2, "0")}
+                            </td>
+                            <td>
+                              <span className="journal-card-tag">{post.category || "ESSAY"}</span>
+                            </td>
+                            <td>
+                              <div className="journal-table-title">{post.title}</div>
+                              {post.subtitle && (
+                                <div className="journal-table-sub">{post.subtitle}</div>
+                              )}
+                            </td>
+                            <td style={{ color: "#a0a09c", fontSize: "13px" }}>
+                              {post.author || "LIGHTHOUSE"}
+                            </td>
+                            <td style={{ color: "#777", fontSize: "12px", textAlign: "right", fontFamily: "monospace" }}>
+                              {post.date}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  /* Grid Card View */
+                  <div className="journal-grid">
+                    {filteredPosts.map((post) => (
+                      <article
+                        key={post.id}
+                        className="journal-card"
+                        tabIndex={0}
+                        onClick={() => openJournalPage(post.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openJournalPage(post.id);
+                          }
+                        }}
+                      >
+                        {post.imageUrl ? (
+                          <div className="journal-card-media">
+                            <img
+                              alt={post.title}
+                              className="journal-card-img"
+                              loading="lazy"
+                              decoding="async"
+                              src={resolveAssetUrl(post.imageUrl)}
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.onerror = null;
+                                const parent = target.parentElement;
+                                if (parent) parent.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ) : null}
+
+                        <div className="journal-card-body">
+                          <div className="journal-card-meta">
+                            <span className="journal-card-tag">{post.category || "ESSAY"}</span>
+                            <span className="journal-card-date">{post.date}</span>
+                          </div>
+
+                          <h3 className="journal-card-title">{post.title}</h3>
+                          {post.subtitle && (
+                            <p className="journal-card-sub">{post.subtitle}</p>
+                          )}
+
+                          <p className="journal-card-snippet">{post.content}</p>
+
+                          <div className="journal-card-footer">
+                            <span>{post.author || "LIGHTHOUSE"}</span>
+                            <span className="journal-card-arrow">READ ARTICLE →</span>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {/* Bottom Back to Home Button */}
+                <div style={{ marginTop: "60px", paddingTop: "32px", borderTop: "1px solid rgba(255,255,255,0.12)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+                  <button
+                    type="button"
+                    onClick={closeJournalPage}
+                    className="journal-page-back-btn"
+                  >
+                    <span>← HOME으로 돌아가기</span>
+                  </button>
+                  <span style={{ fontSize: "11px", color: "#666", letterSpacing: "0.1em" }}>
+                    LIGHTHOUSE CO. CINEMA JOURNAL ARCHIVE
+                  </span>
+                </div>
+              </div>
+            )}
+          </article>
+        );
+      })()}
+
       {/* Magnetic Cursor Hover Poster */}
       <div
         aria-hidden="true"
@@ -2073,6 +2653,107 @@ export default function App() {
             )}
             <div style={{ color: "#777", fontSize: "11px", marginTop: "4px" }}>
               화면 바깥을 클릭하거나 ESC 키를 누르면 닫힙니다.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Journal Post Reader Modal */}
+      {activeJournalPost && (
+        <div
+          className="journal-modal-overlay"
+          onClick={() => setActiveJournalPost(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="journal-modal-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="journal-modal-top-bar">
+              <div className="journal-modal-top-meta">
+                {activeJournalPost.category && (
+                  <span className="journal-card-tag">{activeJournalPost.category}</span>
+                )}
+                <span className="journal-card-date">{activeJournalPost.date}</span>
+                {activeJournalPost.author && (
+                  <span style={{ fontSize: "11px", color: "#a0a09c", letterSpacing: "0.08em" }}>
+                    / {activeJournalPost.author}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="journal-modal-close-btn"
+                onClick={() => setActiveJournalPost(null)}
+                title="닫기 (ESC)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="journal-modal-content">
+              <h2 className="journal-modal-title">{activeJournalPost.title}</h2>
+              {activeJournalPost.subtitle && (
+                <p className="journal-modal-subtitle">{activeJournalPost.subtitle}</p>
+              )}
+
+              {activeJournalPost.imageUrl && (
+                <div
+                  className="journal-modal-hero-image-wrap"
+                  title="클릭하여 원본 크기로 확대"
+                  onClick={() =>
+                    setLightboxImage({
+                      url: activeJournalPost.imageUrl!,
+                      title: activeJournalPost.title,
+                      subtitle: activeJournalPost.subtitle,
+                      designer: activeJournalPost.author,
+                    })
+                  }
+                >
+                  <img
+                    alt={activeJournalPost.title}
+                    className="journal-modal-hero-image"
+                    src={resolveAssetUrl(activeJournalPost.imageUrl)}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "10px",
+                      right: "10px",
+                      background: "rgba(0, 0, 0, 0.75)",
+                      border: "1px solid rgba(255, 255, 255, 0.25)",
+                      padding: "4px 8px",
+                      fontSize: "11px",
+                      color: "#eee",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <ZoomIn size={13} />
+                    <span>클릭하여 확대</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="journal-modal-body-text">
+                {activeJournalPost.content}
+              </div>
+
+              <div className="journal-modal-footer">
+                <button
+                  type="button"
+                  className="about-journal-box-icon"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setActiveJournalPost(null)}
+                >
+                  <span>← BACK TO JOURNAL LIST</span>
+                </button>
+                <span style={{ fontSize: "12px", color: "#888" }}>
+                  LIGHTHOUSE CINEMA ARCHIVE
+                </span>
+              </div>
             </div>
           </div>
         </div>

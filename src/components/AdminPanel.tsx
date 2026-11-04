@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT, ArtworkEntry, DirectorNote } from "../data/content.ts";
+import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT, ArtworkEntry, DirectorNote, JournalPost } from "../data/content.ts";
 import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
 import { resolveAssetUrl, formatGoogleDriveImageUrl } from "../utils/assets.ts";
 import {
@@ -31,6 +31,7 @@ import {
   Loader2,
   RefreshCw,
   Image as ImageIcon,
+  BookOpen,
 } from "lucide-react";
 
 interface AdminPanelProps {
@@ -56,7 +57,7 @@ function getYouTubeVideoId(url?: string): string | null {
   return match ? match[1] : null;
 }
 
-type TabType = "films" | "featured" | "artworks" | "navigation" | "director" | "about" | "promo" | "contact" | "security" | "export";
+type TabType = "films" | "featured" | "artworks" | "navigation" | "director" | "journal" | "about" | "promo" | "contact" | "security" | "export";
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   content,
@@ -113,9 +114,243 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newArtImageUrl, setNewArtImageUrl] = useState<string>("");
   const [newArtDesigner, setNewArtDesigner] = useState<string>("");
 
+  // Tab Journal Board Form States
+  const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null);
+  const [newJournalTitle, setNewJournalTitle] = useState<string>("");
+  const [newJournalSubtitle, setNewJournalSubtitle] = useState<string>("");
+  const [newJournalCategory, setNewJournalCategory] = useState<string>("ESSAY");
+  const [newJournalDate, setNewJournalDate] = useState<string>(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}.${mm}.${dd}`;
+  });
+  const [newJournalImageUrl, setNewJournalImageUrl] = useState<string>("");
+  const [newJournalAuthor, setNewJournalAuthor] = useState<string>("LIGHTHOUSE");
+  const [newJournalContent, setNewJournalContent] = useState<string>("");
+  const [newJournalVisibleOnMain, setNewJournalVisibleOnMain] = useState<boolean>(true);
+  const [newJournalVisibleOnBoard, setNewJournalVisibleOnBoard] = useState<boolean>(true);
+  const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
+  const [journalDeleteTarget, setJournalDeleteTarget] = useState<JournalPost | null>(null);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Journal Action Handlers
+  const handleAddNewJournalPost = () => {
+    if (!newJournalTitle.trim()) {
+      alert("저널 글 제목을 입력해 주세요.");
+      return;
+    }
+    const formattedImg = newJournalImageUrl.trim() ? formatGoogleDriveImageUrl(newJournalImageUrl.trim()) : "";
+    const newPost: JournalPost = {
+      id: "journal-" + Date.now().toString(36),
+      title: newJournalTitle.trim(),
+      subtitle: newJournalSubtitle.trim() || undefined,
+      category: newJournalCategory.trim() || "ESSAY",
+      date: newJournalDate.trim() || "2026.03.15",
+      imageUrl: formattedImg || undefined,
+      author: newJournalAuthor.trim() || "LIGHTHOUSE",
+      content: newJournalContent.trim() || "본문 내용이 등록되었습니다.",
+      visible: true,
+      visibleOnMain: newJournalVisibleOnMain,
+      visibleOnBoard: newJournalVisibleOnBoard,
+    };
+
+    const nextList = [newPost, ...(data.journalPosts || INITIAL_CONTENT.journalPosts || [])];
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: nextList,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+
+    // Reset inputs
+    setNewJournalTitle("");
+    setNewJournalSubtitle("");
+    setNewJournalImageUrl("");
+    setNewJournalContent("");
+    setNewJournalVisibleOnMain(true);
+    setNewJournalVisibleOnBoard(true);
+    showToast("새 저널 게시글이 성공적으로 등록 및 저장되었습니다.");
+  };
+
+  const handleUpdateJournalPost = (id: string, field: keyof JournalPost, value: any) => {
+    let sanitized = value;
+    if (field === "imageUrl" && typeof value === "string") {
+      sanitized = formatGoogleDriveImageUrl(value);
+    }
+    const currentList = data.journalPosts || INITIAL_CONTENT.journalPosts || [];
+    const nextList = currentList.map((post) => {
+      if (post.id !== id) return post;
+      const updated = { ...post, [field]: sanitized };
+      if (field === "visibleOnMain" || field === "visibleOnBoard") {
+        const m = updated.visibleOnMain !== undefined ? updated.visibleOnMain === true : updated.visible !== false;
+        const b = updated.visibleOnBoard !== undefined ? updated.visibleOnBoard === true : updated.visible !== false;
+        updated.visible = m || b;
+      }
+      return updated;
+    });
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: nextList,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+  };
+
+  const handleDeleteJournalPost = (id: string) => {
+    const post = (data.journalPosts || INITIAL_CONTENT.journalPosts || []).find((p) => p.id === id);
+    if (post) {
+      setJournalDeleteTarget(post);
+    }
+  };
+
+  const handleConfirmDeleteJournalPost = () => {
+    if (!journalDeleteTarget) return;
+    const targetId = journalDeleteTarget.id;
+    const targetTitle = journalDeleteTarget.title;
+
+    const nextList = (data.journalPosts || INITIAL_CONTENT.journalPosts || []).filter((p) => p.id !== targetId);
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: nextList,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+
+    if (selectedJournalId === targetId) setSelectedJournalId(null);
+    if (editingJournalId === targetId) setEditingJournalId(null);
+    setJournalDeleteTarget(null);
+    showToast(`‘${targetTitle || "저널 게시글"}’이(가) 정상적으로 삭제되었습니다.`);
+  };
+
+  const handleToggleJournalMainVisibility = (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    let nextVal = false;
+    let targetTitle = "";
+    const currentList = data.journalPosts || INITIAL_CONTENT.journalPosts || [];
+    const nextList = currentList.map((post) => {
+      if (post.id !== id) return post;
+      targetTitle = post.title;
+      const currentMain = post.visibleOnMain !== undefined ? post.visibleOnMain === true : post.visible !== false;
+      nextVal = !currentMain;
+      const currentBoard = post.visibleOnBoard !== undefined ? post.visibleOnBoard === true : post.visible !== false;
+      return {
+        ...post,
+        visibleOnMain: nextVal,
+        visible: nextVal || currentBoard,
+      };
+    });
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: nextList,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`[메인 발행] 상태가 ${nextVal ? "ON(노출)" : "OFF(숨김)"}으로 전환되었습니다.`);
+  };
+
+  const handleToggleJournalBoardVisibility = (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    let nextVal = false;
+    let targetTitle = "";
+    const currentList = data.journalPosts || INITIAL_CONTENT.journalPosts || [];
+    const nextList = currentList.map((post) => {
+      if (post.id !== id) return post;
+      targetTitle = post.title;
+      const currentBoard = post.visibleOnBoard !== undefined ? post.visibleOnBoard === true : post.visible !== false;
+      nextVal = !currentBoard;
+      const currentMain = post.visibleOnMain !== undefined ? post.visibleOnMain === true : post.visible !== false;
+      return {
+        ...post,
+        visibleOnBoard: nextVal,
+        visible: currentMain || nextVal,
+      };
+    });
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: nextList,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`[게시판 발행] 상태가 ${nextVal ? "ON(노출)" : "OFF(숨김)"}으로 전환되었습니다.`);
+  };
+
+  const handleToggleJournalVisibility = (id: string) => {
+    let nextVal = false;
+    const nextList = (data.journalPosts || INITIAL_CONTENT.journalPosts || []).map((post) => {
+      if (post.id !== id) return post;
+      nextVal = post.visible === false;
+      return { ...post, visible: nextVal };
+    });
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: nextList,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`해당 저널 게시글의 전체 노출이 [${nextVal ? "ON" : "OFF"}]으로 변경되었습니다.`);
+  };
+
+  const handleMoveJournalPost = (index: number, direction: "up" | "down") => {
+    const list = [...(data.journalPosts || INITIAL_CONTENT.journalPosts || [])];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: list,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`저널 게시글 순서가 변경되었습니다 (${targetIndex + 1}번째로 이동).`);
+  };
+
+  const handleSetJournalPostRank = (fromIndex: number, toRank: number) => {
+    const targetIndex = toRank - 1;
+    const list = [...(data.journalPosts || INITIAL_CONTENT.journalPosts || [])];
+    if (targetIndex < 0 || targetIndex >= list.length || targetIndex === fromIndex) return;
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(targetIndex, 0, moved);
+    const nextData: SiteContent = {
+      ...data,
+      journalPosts: list,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`저널 게시글이 ${toRank}번째 순위로 배치되었습니다.`);
+  };
+
+  const handleToggleJournalSectionVisibility = () => {
+    const nextVal = data.journalVisible === false ? true : false;
+    const nextData: SiteContent = {
+      ...data,
+      journalVisible: nextVal,
+    };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`메인 화면 저널 섹션이 [${nextVal ? "노출" : "숨김"}] 처리되었습니다.`);
   };
 
   // Film Handlers
@@ -1212,6 +1447,28 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
           >
             <Quote size={16} />
             <span>디렉터스 노트 관리 ({((data.directorNotes ? data.directorNotes.filter((n) => n.visible !== false).length : 1))})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("journal")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px 24px",
+              background: activeTab === "journal" ? "#1e1e1e" : "transparent",
+              border: 0,
+              borderLeft: activeTab === "journal" ? "3px solid #fff" : "3px solid transparent",
+              color: activeTab === "journal" ? "#fff" : "#888",
+              fontSize: "13px",
+              fontWeight: 600,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            <BookOpen size={16} />
+            <span>저널 게시판 관리 ({(data.journalPosts || INITIAL_CONTENT.journalPosts || []).length})</span>
           </button>
 
           <button
@@ -4847,6 +5104,1038 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
             </div>
           );
         })()}
+
+          {/* TAB: JOURNAL BOARD MANAGEMENT (저널 게시판 관리) */}
+          {activeTab === "journal" && (() => {
+            const posts = data.journalPosts || INITIAL_CONTENT.journalPosts || [];
+            const isSectionVisible = data.journalVisible !== false;
+
+            return (
+              <div style={{ maxWidth: "1080px" }}>
+                <div style={{ marginBottom: "24px" }}>
+                  <h2 style={{ fontSize: "24px", fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.03em" }}>
+                    저널 게시판 관리 (JOURNAL)
+                  </h2>
+                  <p style={{ margin: 0, color: "#888", fontSize: "13px" }}>
+                    라이트하우스 공식 저널 글(에세이, 비평, 시네마 노트, 아카이브)을 등록 및 편집하고, 순서와 [메인 화면 / 게시판 페이지] 발행 여부를 각각 개별적으로 관리합니다.
+                  </p>
+                </div>
+
+                {/* Section Visibility Master Control Card */}
+                <div
+                  style={{
+                    background: "#101010",
+                    border: `1px solid ${isSectionVisible ? "rgba(34, 197, 94, 0.35)" : "rgba(239, 68, 68, 0.35)"}`,
+                    padding: "20px 24px",
+                    marginBottom: "28px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "16px",
+                  }}
+                >
+                  <div style={{ minWidth: "260px", flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                      <BookOpen size={16} style={{ color: isSectionVisible ? "#4ade80" : "#f87171" }} />
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "#fff" }}>
+                        메인 화면 저널(JOURNAL) 섹션 전체 노출 설정
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: "2px",
+                          background: isSectionVisible ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                          color: isSectionVisible ? "#4ade80" : "#f87171",
+                          border: `1px solid ${isSectionVisible ? "rgba(34, 197, 94, 0.5)" : "rgba(239, 68, 68, 0.5)"}`,
+                        }}
+                      >
+                        {isSectionVisible ? "현재 메인 화면에 노출 중 (ON)" : "현재 메인 화면에서 숨김 (OFF)"}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "12px", color: "#999", lineHeight: 1.5 }}>
+                      {isSectionVisible
+                        ? `메인 화면(ABOUT 하단 및 네비게이션)에 저널 섹션이 노출 중입니다. 각 글의 [메인 발행]이 켜진 글들이 표시됩니다.`
+                        : `메인 화면에서 저널 섹션이 완전히 숨겨집니다. (상단 네비게이션이나 ABOUT 하단 링크를 통한 전용 게시판 페이지는 계속 접근 가능합니다)`}
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isSectionVisible) handleToggleJournalSectionVisibility();
+                      }}
+                      style={{
+                        background: isSectionVisible ? "#15803d" : "#1a1a1a",
+                        border: `1px solid ${isSectionVisible ? "#22c55e" : "rgba(255,255,255,0.2)"}`,
+                        color: isSectionVisible ? "#fff" : "#777",
+                        padding: "8px 18px",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: isSectionVisible ? "default" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span>메인 섹션 노출 (ON)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSectionVisible) handleToggleJournalSectionVisibility();
+                      }}
+                      style={{
+                        background: !isSectionVisible ? "#b91c1c" : "#1a1a1a",
+                        border: `1px solid ${!isSectionVisible ? "#ef4444" : "rgba(255,255,255,0.2)"}`,
+                        color: !isSectionVisible ? "#fff" : "#777",
+                        padding: "8px 18px",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: !isSectionVisible ? "default" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <EyeOff size={13} />
+                      <span>메인 섹션 숨김 (OFF)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Journal Post Registration Card */}
+                <div
+                  style={{
+                    background: "#101010",
+                    border: "1px solid rgba(255, 255, 255, 0.16)",
+                    padding: "28px",
+                    marginBottom: "36px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "20px",
+                      paddingBottom: "14px",
+                      borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Plus size={16} style={{ color: "#f59e0b" }} />
+                      <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
+                        새 저널 게시글 작성 및 등록
+                      </h3>
+                    </div>
+                    <span style={{ fontSize: "11px", color: "#888" }}>
+                      이미지 링크와 줄바꿈 텍스트를 지원합니다
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                        글 제목 (Title) <span style={{ color: "#ef4444" }}>*필수</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newJournalTitle}
+                        onChange={(e) => setNewJournalTitle(e.target.value)}
+                        placeholder="예: 자크 드미의 〈쉘부르의 우산〉: 색채와 멜로디의 미학"
+                        style={{
+                          width: "100%",
+                          background: "#080808",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          color: "#fff",
+                          padding: "10px 12px",
+                          fontSize: "13px",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                        부제목 / 한 줄 소개 (Subtitle)
+                      </label>
+                      <input
+                        type="text"
+                        value={newJournalSubtitle}
+                        onChange={(e) => setNewJournalSubtitle(e.target.value)}
+                        placeholder="예: 모든 대사가 노래가 되는 누벨바그의 찬란한 순간"
+                        style={{
+                          width: "100%",
+                          background: "#080808",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          color: "#fff",
+                          padding: "10px 12px",
+                          fontSize: "13px",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                        카테고리 (Category)
+                      </label>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <select
+                          value={newJournalCategory}
+                          onChange={(e) => setNewJournalCategory(e.target.value)}
+                          style={{
+                            flex: 1,
+                            background: "#080808",
+                            border: "1px solid rgba(255, 255, 255, 0.2)",
+                            color: "#fff",
+                            padding: "10px 8px",
+                            fontSize: "12px",
+                            outline: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="ESSAY">ESSAY (에세이)</option>
+                          <option value="CRITIQUE">CRITIQUE (비평)</option>
+                          <option value="NOTE">NOTE (시네마 노트)</option>
+                          <option value="NEWS">NEWS (소식)</option>
+                          <option value="INTERVIEW">INTERVIEW (인터뷰)</option>
+                          <option value="ARCHIVE">ARCHIVE (아카이브)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                        발행일자 (Date)
+                      </label>
+                      <input
+                        type="text"
+                        value={newJournalDate}
+                        onChange={(e) => setNewJournalDate(e.target.value)}
+                        placeholder="2026.03.15"
+                        style={{
+                          width: "100%",
+                          background: "#080808",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          color: "#fff",
+                          padding: "10px 12px",
+                          fontSize: "13px",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                        작성자 / 기고자 (Author)
+                      </label>
+                      <input
+                        type="text"
+                        value={newJournalAuthor}
+                        onChange={(e) => setNewJournalAuthor(e.target.value)}
+                        placeholder="LIGHTHOUSE"
+                        style={{
+                          width: "100%",
+                          background: "#080808",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          color: "#fff",
+                          padding: "10px 12px",
+                          fontSize: "13px",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: "16px" }}>
+                    <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                      대표 이미지 링크 (Google Drive 링크 또는 일반 웹 이미지 URL)
+                    </label>
+                    <input
+                      type="text"
+                      value={newJournalImageUrl}
+                      onChange={(e) => setNewJournalImageUrl(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/... 또는 https://example.com/photo.jpg"
+                      style={{
+                        width: "100%",
+                        background: "#080808",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        color: "#fff",
+                        padding: "10px 12px",
+                        fontSize: "13px",
+                        outline: "none",
+                      }}
+                    />
+                    <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#777" }}>
+                      * 구글 드라이브 링크 입력 시 고화질 웹 썸네일로 자동 변환 연동됩니다. (비워둘 시 텍스트 전용 카드로 노출됩니다)
+                    </p>
+
+                    {newJournalImageUrl.trim() && (
+                      <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span style={{ fontSize: "11px", color: "#f59e0b" }}>이미지 미리보기:</span>
+                        <img
+                          alt="미리보기"
+                          src={resolveAssetUrl(formatGoogleDriveImageUrl(newJournalImageUrl.trim()))}
+                          style={{ width: "90px", height: "55px", objectFit: "cover", border: "1px solid #333", borderRadius: "2px" }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginBottom: "20px" }}>
+                    <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
+                      글 본문 내용 (Text Content) — 줄바꿈이 화면에 그대로 반영됩니다
+                    </label>
+                    <textarea
+                      rows={7}
+                      value={newJournalContent}
+                      onChange={(e) => setNewJournalContent(e.target.value)}
+                      placeholder="에세이, 비평, 노트 본문을 입력하세요. 줄바꿈(엔터)을 하면 화면상에도 동일하게 단락이 구분되어 노출됩니다."
+                      style={{
+                        width: "100%",
+                        background: "#080808",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        color: "#fff",
+                        padding: "12px 14px",
+                        fontSize: "13px",
+                        lineHeight: "1.65",
+                        outline: "none",
+                        fontFamily: "inherit",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    />
+                  </div>
+
+                  {/* Publishing Destination Selection (발행 위치 개별 선택) */}
+                  <div style={{ marginBottom: "20px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.12)", padding: "14px 18px", borderRadius: "2px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <label style={{ display: "block", fontSize: "12px", color: "#f59e0b", fontWeight: 700, margin: 0 }}>
+                        발행 위치 개별 선택 (메인 / 게시판)
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#888" }}>
+                        글마다 메인 화면과 게시판 페이지 노출 여부를 따로 지정할 수 있습니다
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", alignItems: "center" }}>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: newJournalVisibleOnMain ? "#4ade80" : "#888" }}>
+                        <input
+                          type="checkbox"
+                          checked={newJournalVisibleOnMain}
+                          onChange={(e) => setNewJournalVisibleOnMain(e.target.checked)}
+                          style={{ accentColor: "#22c55e", width: "16px", height: "16px", cursor: "pointer" }}
+                        />
+                        <span style={{ fontWeight: 700 }}>메인 화면 발행 (MAIN)</span>
+                        <span style={{ fontSize: "11px", color: "#666" }}>[메인 화면 저널 카드 섹션 노출]</span>
+                      </label>
+
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", color: newJournalVisibleOnBoard ? "#60a5fa" : "#888" }}>
+                        <input
+                          type="checkbox"
+                          checked={newJournalVisibleOnBoard}
+                          onChange={(e) => setNewJournalVisibleOnBoard(e.target.checked)}
+                          style={{ accentColor: "#3b82f6", width: "16px", height: "16px", cursor: "pointer" }}
+                        />
+                        <span style={{ fontWeight: 700 }}>게시판 페이지 발행 (BOARD)</span>
+                        <span style={{ fontSize: "11px", color: "#666" }}>[전체 저널 게시판 목록 노출]</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddNewJournalPost}
+                    style={{
+                      background: "#22c55e",
+                      border: "none",
+                      color: "#fff",
+                      padding: "11px 24px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      borderRadius: "2px",
+                      boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
+                    }}
+                  >
+                    <Plus size={16} />
+                    <span>새 저널 글 등록하기</span>
+                  </button>
+                </div>
+
+                {/* Registered Posts List */}
+                <div style={{ marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 600, color: "#fff" }}>
+                    등록된 저널 게시글 목록 ({posts.length}편)
+                  </h3>
+                  <span style={{ fontSize: "11px", color: "#888" }}>
+                    순위 조정(▲/▼) 및 노출 상태를 변경할 수 있습니다.
+                  </span>
+                </div>
+
+                {posts.length === 0 ? (
+                  <div style={{ background: "#111", padding: "40px", textAlign: "center", color: "#777", border: "1px dashed #333" }}>
+                    등록된 저널 게시글이 없습니다. 상단에서 첫 번째 저널 글을 작성해 보세요.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {posts.map((post, idx) => {
+                      const isEditing = editingJournalId === post.id;
+                      const isMainExposed = post.visibleOnMain !== undefined ? post.visibleOnMain === true : post.visible !== false;
+                      const isBoardExposed = post.visibleOnBoard !== undefined ? post.visibleOnBoard === true : post.visible !== false;
+
+                      return (
+                        <div
+                          key={post.id || idx}
+                          style={{
+                            background: "#121212",
+                            border: `1px solid ${isEditing ? "rgba(245, 158, 11, 0.5)" : "rgba(255, 255, 255, 0.12)"}`,
+                            padding: "20px 24px",
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          {/* Card Top Action Bar */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: "14px",
+                              paddingBottom: "12px",
+                              borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+                              flexWrap: "wrap",
+                              gap: "10px",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              {/* Rank Select */}
+                              <span style={{ fontSize: "11px", color: "#888", fontWeight: 700 }}>순위:</span>
+                              <select
+                                value={idx + 1}
+                                onChange={(e) => handleSetJournalPostRank(idx, Number(e.target.value))}
+                                style={{
+                                  background: "#080808",
+                                  border: "1px solid rgba(245, 158, 11, 0.4)",
+                                  color: "#f59e0b",
+                                  fontSize: "12px",
+                                  fontWeight: 700,
+                                  padding: "3px 6px",
+                                  cursor: "pointer",
+                                  outline: "none",
+                                }}
+                              >
+                                {posts.map((_, rIdx) => (
+                                  <option key={rIdx} value={rIdx + 1}>
+                                    {rIdx + 1}순위 {rIdx === 0 ? "(★제일 처음)" : ""}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {/* Up / Down Move Buttons */}
+                              <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveJournalPost(idx, "up")}
+                                  style={{
+                                    background: "#222",
+                                    border: "1px solid rgba(255,255,255,0.15)",
+                                    color: idx === 0 ? "#555" : "#fff",
+                                    width: "28px",
+                                    height: "26px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: idx === 0 ? "not-allowed" : "pointer",
+                                  }}
+                                  title="한 칸 앞으로 이동"
+                                >
+                                  <ArrowUp size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === posts.length - 1}
+                                  onClick={() => handleMoveJournalPost(idx, "down")}
+                                  style={{
+                                    background: "#222",
+                                    border: "1px solid rgba(255,255,255,0.15)",
+                                    color: idx === posts.length - 1 ? "#555" : "#fff",
+                                    width: "28px",
+                                    height: "26px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: idx === posts.length - 1 ? "not-allowed" : "pointer",
+                                  }}
+                                  title="한 칸 뒤로 이동"
+                                >
+                                  <ArrowDown size={13} />
+                                </button>
+                              </div>
+
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: 700,
+                                  letterSpacing: "0.1em",
+                                  padding: "3px 8px",
+                                  background: "rgba(255, 255, 255, 0.1)",
+                                  color: "#fff",
+                                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                                }}
+                              >
+                                {post.category || "ESSAY"}
+                              </span>
+
+                              <span style={{ fontSize: "11px", color: "#888" }}>
+                                {post.date}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              {/* Main Visibility Toggle Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleJournalMainVisibility(post.id, e)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  background: isMainExposed ? "#15803d" : "#202020",
+                                  border: `1px solid ${isMainExposed ? "#4ade80" : "rgba(255, 255, 255, 0.2)"}`,
+                                  color: isMainExposed ? "#ffffff" : "#888888",
+                                  padding: "6px 12px",
+                                  fontSize: "11px",
+                                  fontWeight: 800,
+                                  cursor: "pointer",
+                                  borderRadius: "3px",
+                                  boxShadow: isMainExposed ? "0 2px 8px rgba(34, 197, 94, 0.35)" : "none",
+                                  transition: "all 0.15s ease",
+                                }}
+                                title="클릭하여 메인 화면 노출(발행) 상태 전환"
+                              >
+                                <span
+                                  style={{
+                                    width: "7px",
+                                    height: "7px",
+                                    borderRadius: "50%",
+                                    background: isMainExposed ? "#4ade80" : "#666666",
+                                    display: "inline-block",
+                                  }}
+                                />
+                                {isMainExposed ? <Eye size={13} style={{ color: "#86efac" }} /> : <EyeOff size={13} style={{ color: "#777" }} />}
+                                <span>메인 발행: {isMainExposed ? "ON" : "OFF"}</span>
+                              </button>
+
+                              {/* Board Visibility Toggle Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleJournalBoardVisibility(post.id, e)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  background: isBoardExposed ? "#1d4ed8" : "#202020",
+                                  border: `1px solid ${isBoardExposed ? "#60a5fa" : "rgba(255, 255, 255, 0.2)"}`,
+                                  color: isBoardExposed ? "#ffffff" : "#888888",
+                                  padding: "6px 12px",
+                                  fontSize: "11px",
+                                  fontWeight: 800,
+                                  cursor: "pointer",
+                                  borderRadius: "3px",
+                                  boxShadow: isBoardExposed ? "0 2px 8px rgba(59, 130, 246, 0.35)" : "none",
+                                  transition: "all 0.15s ease",
+                                }}
+                                title="클릭하여 게시판 페이지 노출(발행) 상태 전환"
+                              >
+                                <span
+                                  style={{
+                                    width: "7px",
+                                    height: "7px",
+                                    borderRadius: "50%",
+                                    background: isBoardExposed ? "#60a5fa" : "#666666",
+                                    display: "inline-block",
+                                  }}
+                                />
+                                {isBoardExposed ? <Eye size={13} style={{ color: "#93c5fd" }} /> : <EyeOff size={13} style={{ color: "#777" }} />}
+                                <span>게시판 발행: {isBoardExposed ? "ON" : "OFF"}</span>
+                              </button>
+
+                              {/* Edit Mode Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => setEditingJournalId(isEditing ? null : post.id)}
+                                style={{
+                                  background: isEditing ? "#f59e0b" : "#222",
+                                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                                  color: isEditing ? "#000" : "#eee",
+                                  padding: "5px 12px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {isEditing ? "수정 접기" : "내용 수정"}
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setJournalDeleteTarget(post);
+                                }}
+                                style={{
+                                  background: "rgba(239, 68, 68, 0.12)",
+                                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                                  color: "#f87171",
+                                  padding: "5px 11px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  borderRadius: "2px",
+                                  transition: "all 0.15s ease",
+                                }}
+                                title="이 글 삭제"
+                              >
+                                <Trash2 size={13} />
+                                <span>삭제</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Card Content Display or Edit Mode */}
+                          {isEditing ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "10px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>제목</label>
+                                  <input
+                                    type="text"
+                                    value={post.title}
+                                    onChange={(e) => handleUpdateJournalPost(post.id, "title", e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.2)",
+                                      color: "#fff",
+                                      padding: "8px 10px",
+                                      fontSize: "13px",
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>부제목</label>
+                                  <input
+                                    type="text"
+                                    value={post.subtitle || ""}
+                                    onChange={(e) => handleUpdateJournalPost(post.id, "subtitle", e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.2)",
+                                      color: "#fff",
+                                      padding: "8px 10px",
+                                      fontSize: "13px",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>카테고리</label>
+                                  <select
+                                    value={post.category || "ESSAY"}
+                                    onChange={(e) => handleUpdateJournalPost(post.id, "category", e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.2)",
+                                      color: "#fff",
+                                      padding: "8px 10px",
+                                      fontSize: "12px",
+                                    }}
+                                  >
+                                    <option value="ESSAY">ESSAY</option>
+                                    <option value="CRITIQUE">CRITIQUE</option>
+                                    <option value="NOTE">NOTE</option>
+                                    <option value="NEWS">NEWS</option>
+                                    <option value="INTERVIEW">INTERVIEW</option>
+                                    <option value="ARCHIVE">ARCHIVE</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>날짜</label>
+                                  <input
+                                    type="text"
+                                    value={post.date}
+                                    onChange={(e) => handleUpdateJournalPost(post.id, "date", e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.2)",
+                                      color: "#fff",
+                                      padding: "8px 10px",
+                                      fontSize: "13px",
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>작성자</label>
+                                  <input
+                                    type="text"
+                                    value={post.author || ""}
+                                    onChange={(e) => handleUpdateJournalPost(post.id, "author", e.target.value)}
+                                    style={{
+                                      width: "100%",
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.2)",
+                                      color: "#fff",
+                                      padding: "8px 10px",
+                                      fontSize: "13px",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>이미지 링크 (구글 드라이브 / URL)</label>
+                                <input
+                                  type="text"
+                                  value={post.imageUrl || ""}
+                                  onChange={(e) => handleUpdateJournalPost(post.id, "imageUrl", e.target.value)}
+                                  placeholder="https://..."
+                                  style={{
+                                    width: "100%",
+                                    background: "#080808",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                    color: "#fff",
+                                    padding: "8px 10px",
+                                    fontSize: "13px",
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>
+                                  본문 내용 (줄바꿈이 화면에 그대로 반영됩니다)
+                                </label>
+                                <textarea
+                                  rows={6}
+                                  value={post.content}
+                                  onChange={(e) => handleUpdateJournalPost(post.id, "content", e.target.value)}
+                                  style={{
+                                    width: "100%",
+                                    background: "#080808",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                    color: "#fff",
+                                    padding: "10px 12px",
+                                    fontSize: "13px",
+                                    lineHeight: "1.65",
+                                    whiteSpace: "pre-wrap",
+                                    fontFamily: "inherit",
+                                  }}
+                                />
+                              </div>
+
+                              {/* Publishing Destinations in Edit Mode */}
+                              <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.1)", padding: "12px 16px", borderRadius: "2px" }}>
+                                <label style={{ display: "block", fontSize: "11px", color: "#f59e0b", marginBottom: "8px", fontWeight: 700 }}>
+                                  발행 위치 설정 (메인 화면 / 게시판 페이지 개별 제어)
+                                </label>
+                                <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "center" }}>
+                                  <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "12px", color: isMainExposed ? "#4ade80" : "#888" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isMainExposed}
+                                      onChange={(e) => handleUpdateJournalPost(post.id, "visibleOnMain", e.target.checked)}
+                                      style={{ accentColor: "#22c55e", width: "15px", height: "15px", cursor: "pointer" }}
+                                    />
+                                    <span style={{ fontWeight: 600 }}>메인 화면 발행 (노출)</span>
+                                  </label>
+
+                                  <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "12px", color: isBoardExposed ? "#60a5fa" : "#888" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isBoardExposed}
+                                      onChange={(e) => handleUpdateJournalPost(post.id, "visibleOnBoard", e.target.checked)}
+                                      style={{ accentColor: "#3b82f6", width: "15px", height: "15px", cursor: "pointer" }}
+                                    />
+                                    <span style={{ fontWeight: 600 }}>게시판 페이지 발행 (노출)</span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingJournalId(null);
+                                  showToast("저널 게시글 수정이 저장되었습니다.");
+                                }}
+                                style={{
+                                  background: "#f59e0b",
+                                  border: "none",
+                                  color: "#000",
+                                  padding: "8px 18px",
+                                  fontSize: "12px",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  alignSelf: "flex-start",
+                                }}
+                              >
+                                수정 완료 (적용)
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+                              {post.imageUrl && (
+                                <img
+                                  alt=""
+                                  src={resolveAssetUrl(post.imageUrl)}
+                                  style={{
+                                    width: "140px",
+                                    height: "90px",
+                                    objectFit: "cover",
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    borderRadius: "2px",
+                                    flexShrink: 0,
+                                  }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: "16px", fontWeight: 700, color: "#fff", marginBottom: "4px" }}>
+                                  {post.title}
+                                </div>
+                                {post.subtitle && (
+                                  <div style={{ fontSize: "13px", color: "#a0a09c", marginBottom: "8px" }}>
+                                    {post.subtitle}
+                                  </div>
+                                )}
+                                <div
+                                  style={{
+                                    fontSize: "12.5px",
+                                    lineHeight: "1.6",
+                                    color: "#888",
+                                    whiteSpace: "pre-line",
+                                    maxHeight: "78px",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                >
+                                  {post.content}
+                                </div>
+
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px", flexWrap: "wrap" }}>
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      fontWeight: 700,
+                                      padding: "2px 8px",
+                                      borderRadius: "2px",
+                                      background: isMainExposed ? "rgba(34, 197, 94, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                                      color: isMainExposed ? "#4ade80" : "#777",
+                                      border: `1px solid ${isMainExposed ? "rgba(34, 197, 94, 0.4)" : "rgba(255, 255, 255, 0.1)"}`,
+                                    }}
+                                  >
+                                    {isMainExposed ? "● 메인 노출 ON" : "○ 메인 미발행"}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      fontWeight: 700,
+                                      padding: "2px 8px",
+                                      borderRadius: "2px",
+                                      background: isBoardExposed ? "rgba(59, 130, 246, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                                      color: isBoardExposed ? "#60a5fa" : "#777",
+                                      border: `1px solid ${isBoardExposed ? "rgba(59, 130, 246, 0.4)" : "rgba(255, 255, 255, 0.1)"}`,
+                                    }}
+                                  >
+                                    {isBoardExposed ? "● 게시판 노출 ON" : "○ 게시판 미발행"}
+                                  </span>
+                                  {post.author && (
+                                    <span style={{ fontSize: "11px", color: "#666", marginLeft: "4px" }}>
+                                      작성자: {post.author}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Custom Confirmation Popup: Journal Post Deletion (삭제하시겠습니까 팝업) */}
+                {journalDeleteTarget && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-dialog-title"
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 9999,
+                      background: "rgba(0, 0, 0, 0.78)",
+                      backdropFilter: "blur(6px)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "20px",
+                    }}
+                    onClick={() => setJournalDeleteTarget(null)}
+                  >
+                    <div
+                      style={{
+                        background: "#161616",
+                        border: "1px solid rgba(239, 68, 68, 0.45)",
+                        boxShadow: "0 24px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(239, 68, 68, 0.25)",
+                        borderRadius: "3px",
+                        width: "100%",
+                        maxWidth: "480px",
+                        padding: "26px 28px",
+                        color: "#fff",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Header */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "50%",
+                              background: "rgba(239, 68, 68, 0.15)",
+                              border: "1px solid rgba(239, 68, 68, 0.35)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#ef4444",
+                            }}
+                          >
+                            <Trash2 size={18} />
+                          </div>
+                          <h3 id="delete-dialog-title" style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "#fff" }}>
+                            저널 게시글 삭제
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setJournalDeleteTarget(null)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#888",
+                            cursor: "pointer",
+                            padding: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          title="닫기"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+
+                      {/* Main Message */}
+                      <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#eee", lineHeight: 1.5 }}>
+                        정말 이 저널 게시글을 <strong>삭제하시겠습니까?</strong>
+                      </p>
+
+                      {/* Target Post Preview Box */}
+                      <div
+                        style={{
+                          background: "#0d0d0d",
+                          border: "1px solid rgba(255, 255, 255, 0.12)",
+                          padding: "14px 16px",
+                          borderRadius: "2px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <div style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 700, marginBottom: "4px" }}>
+                          [{journalDeleteTarget.category || "ESSAY"}] {journalDeleteTarget.date}
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 700, color: "#fff", lineHeight: 1.4, wordBreak: "break-word" }}>
+                          {journalDeleteTarget.title}
+                        </div>
+                        {journalDeleteTarget.subtitle && (
+                          <div style={{ fontSize: "12px", color: "#999", marginTop: "4px" }}>
+                            {journalDeleteTarget.subtitle}
+                          </div>
+                        )}
+                      </div>
+
+                      <p style={{ margin: "0 0 24px", fontSize: "12px", color: "#f87171", lineHeight: 1.4 }}>
+                        * 삭제 시 메인 화면과 게시판 페이지에서 즉시 제외되며 복구할 수 없습니다.
+                      </p>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                        <button
+                          type="button"
+                          onClick={() => setJournalDeleteTarget(null)}
+                          style={{
+                            background: "#252525",
+                            border: "1px solid rgba(255, 255, 255, 0.15)",
+                            color: "#ddd",
+                            padding: "9px 20px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            borderRadius: "2px",
+                          }}
+                        >
+                          취소
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirmDeleteJournalPost}
+                          style={{
+                            background: "#dc2626",
+                            border: "none",
+                            color: "#fff",
+                            padding: "9px 22px",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            borderRadius: "2px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            boxShadow: "0 4px 14px rgba(220, 38, 38, 0.4)",
+                          }}
+                        >
+                          <Trash2 size={14} />
+                          <span>삭제하기</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* TAB 4: ABOUT SECTION */}
           {activeTab === "about" && (

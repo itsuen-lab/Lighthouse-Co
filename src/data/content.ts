@@ -88,6 +88,20 @@ export interface DirectorNote {
   visible?: boolean; // 메인 화면 노출 여부 (기본 true)
 }
 
+export interface JournalPost {
+  id: string;
+  title: string;
+  subtitle?: string;
+  date: string;
+  category?: string; // ESSAY, NEWS, CRITIQUE, NOTE, INTERVIEW, etc.
+  imageUrl?: string;
+  content: string; // Multiline text / essay content
+  author?: string;
+  visible?: boolean;
+  visibleOnMain?: boolean; // 메인 화면 발행/노출 여부 (기본 true)
+  visibleOnBoard?: boolean; // 게시판 페이지 발행/노출 여부 (기본 true)
+}
+
 export interface SiteContent {
   navItems?: NavItem[];
   featured: string[];
@@ -99,6 +113,8 @@ export interface SiteContent {
   };
   directorNotes?: DirectorNote[];
   directorNotesVisible?: boolean;
+  journalPosts?: JournalPost[];
+  journalVisible?: boolean;
   promo?: {
     image: string;
     titleLines: string[];
@@ -114,6 +130,7 @@ export interface SiteContent {
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
   { id: "nav-programs", label: "PROGRAMS", url: "#programs", isExternal: false, targetBlank: false, visible: true },
+  { id: "nav-journal", label: "JOURNAL", url: "#journal", isExternal: false, targetBlank: false, visible: true },
   { id: "nav-about", label: "ABOUT", url: "#about", isExternal: false, targetBlank: false, visible: true },
   { id: "nav-contact", label: "CONTACT", url: "#contact", isExternal: false, targetBlank: false, visible: true },
 ];
@@ -126,6 +143,14 @@ export const INITIAL_CONTENT: SiteContent = {
       "isExternal": false,
       "url": "#programs",
       "label": "PROGRAMS",
+      "targetBlank": false
+    },
+    {
+      "id": "nav-journal",
+      "visible": true,
+      "isExternal": false,
+      "url": "#journal",
+      "label": "JOURNAL",
       "targetBlank": false
     },
     {
@@ -513,6 +538,48 @@ export const INITIAL_CONTENT: SiteContent = {
     "instagramUrl": "https://www.instagram.com/filmlighthouse"
   },
   "artworksVisible": true,
+  "journalVisible": true,
+  "journalPosts": [
+    {
+      "id": "journal-1",
+      "title": "라이트하우스의 태도: 예술영화관 프로그래머에서 배급사로",
+      "subtitle": "영화 프로그램의 맥락과 관객의 만남을 발명하는 일에 관하여",
+      "date": "2026.03.15",
+      "category": "ESSAY",
+      "imageUrl": "https://drive.google.com/thumbnail?id=1jhnAZUeGoWayGiVtCGtTBT-fwPnIUOeZ&sz=w1920",
+      "content": "라이트하우스는 예술영화관 프로그래머에 의해 설립된 영화 수입/배급사입니다.\n\n영화관이라는 물리적 공간에서 관객과 영화가 맺는 긴밀한 호흡을 지켜보며, 우리는 좋은 영화를 온전히 전달하기 위해선 배급의 첫 시작부터 상영의 마지막 순간까지 하나의 일관된 맥락이 설계되어야 한다는 것을 배웠습니다.\n\n단순히 판권을 구매해 스크린에 거는 일에 그치지 않고, 동시대 관객들에게 가장 유효한 영화적 언어로 포스터와 카피, 상영 방식을 발명합니다. 라이트하우스 저널은 그 치열한 고민과 기록을 관객들과 함께 나누는 공간입니다.",
+      "author": "LIGHTHOUSE",
+      "visible": true,
+      "visibleOnMain": true,
+      "visibleOnBoard": true
+    },
+    {
+      "id": "journal-2",
+      "title": "자크 드미의 〈쉘부르의 우산〉: 영원히 울려 퍼지는 색채와 멜로디",
+      "subtitle": "모든 대사가 노래가 되는 누벨바그의 찬란한 순간",
+      "date": "2026.02.24",
+      "category": "CRITIQUE",
+      "imageUrl": "https://drive.google.com/thumbnail?id=18W3HeS0sR5HP_Fd-FZO-yZWYVuYYwyNQ&sz=w1920",
+      "content": "1964년 칸 영화제 황금종려상 수상작인 〈쉘부르의 우산〉은 영화사상 가장 독창적인 송스루(Sung-through) 뮤지컬 영화 중 하나입니다.\n\n미셸 르그랑의 서정적인 음악과 자크 드미 감독 특유의 파스텔톤 색채 미학은 비극적인 사랑의 현실을 역설적으로 가장 찬란하고 아름답게 직조해 냅니다. 전쟁이라는 시대적 비극 앞에서도 시들지 않는 청춘의 순수함을 다시 한번 스크린에서 마주합니다.",
+      "author": "PROGRAMMER NOTE",
+      "visible": true,
+      "visibleOnMain": true,
+      "visibleOnBoard": true
+    },
+    {
+      "id": "journal-3",
+      "title": "로스 맥켈위와 사적 다큐멘터리의 힘: 〈리메이크〉를 준비하며",
+      "subtitle": "카메라를 든 1인칭 관찰자가 기록한 시간과 기억의 초상",
+      "date": "2026.01.18",
+      "category": "NOTE",
+      "imageUrl": "https://drive.google.com/thumbnail?id=1HdHZ-uFpA7weB2SiSLXwXjVBZ7cBY_fU&sz=w1920",
+      "content": "로스 맥켈위 감독의 영화들은 언제나 자신의 가족과 일상, 그리고 그 안에 얽힌 역사를 응시하는 것에서 시작합니다.\n\n〈셔먼의 행진〉에서부터 최신작 〈리메이크〉에 이르기까지, 맥켈위는 상실과 슬픔, 유머와 성찰을 교차시키며 사적인 기록이 어떻게 보편적인 영화적 감동으로 확장될 수 있는지를 증명합니다.",
+      "author": "LIGHTHOUSE",
+      "visible": true,
+      "visibleOnMain": true,
+      "visibleOnBoard": true
+    }
+  ],
   "mainArtworkIds": [
     "art-1793445304439-vdb8",
     "art-1793436666108-cvh6",
