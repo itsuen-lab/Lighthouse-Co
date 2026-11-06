@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry, JournalPost } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
+import { recordSiteVisit, recordPostView, recordFilmView } from "./services/analytics.ts";
 import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus, ZoomIn, X, ExternalLink, Search, ArrowLeft, ArrowRight, LayoutGrid, List, BookOpen } from "lucide-react";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
 import { ArtworksSection } from "./components/ArtworksSection.tsx";
@@ -117,6 +118,7 @@ export default function App() {
   const [isJournalPage, setIsJournalPage] = useState<boolean>(false);
   const [readingJournalPost, setReadingJournalPost] = useState<JournalPost | null>(null);
   const [journalCategoryFilter, setJournalCategoryFilter] = useState<string>("ALL");
+  const [journalTagFilter, setJournalTagFilter] = useState<string | null>(null);
   const [journalSearchQuery, setJournalSearchQuery] = useState<string>("" );
   const [journalViewMode, setJournalViewMode] = useState<"grid" | "table">("grid");
 
@@ -370,6 +372,23 @@ export default function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, [handleHashChange]);
 
+  // Analytics Tracking (Admin-only stats, silently recorded)
+  useEffect(() => {
+    recordSiteVisit();
+  }, []);
+
+  useEffect(() => {
+    if (activeFilmId) {
+      recordFilmView(activeFilmId);
+    }
+  }, [activeFilmId]);
+
+  useEffect(() => {
+    if (readingJournalPost?.id) {
+      recordPostView(readingJournalPost.id);
+    }
+  }, [readingJournalPost?.id]);
+
   // Unified Hero Slides: Unlimited films & promo cards with customizable order
   interface FilmHeroSlide {
     type: "film";
@@ -619,6 +638,7 @@ export default function App() {
     setIsJournalPage(false);
     setReadingJournalPost(null);
     window.location.hash = `film-${id}`;
+    recordFilmView(id);
   };
 
   const closeDetail = () => {
@@ -634,6 +654,7 @@ export default function App() {
       const found = (content.journalPosts || INITIAL_CONTENT.journalPosts || []).find((p) => p.id === postId);
       setReadingJournalPost(found || null);
       window.location.hash = `journal-${postId}`;
+      recordPostView(postId);
     } else {
       setReadingJournalPost(null);
       window.location.hash = "journal";
@@ -1841,6 +1862,120 @@ export default function App() {
               )}
             </aside>
           </div>
+
+          {/* Program Lineup Section (어 프로그램 바이 선택 시 관련 영화들을 아트워크 상단에 작게 보여주고 클릭 시 영화 상세 페이지로 이동) */}
+          {(() => {
+            const isProgram =
+              (activeFilm.bylinePrefix?.trim() || "").toUpperCase() === "A PROGRAM BY" ||
+              activeFilm.directorLabel === "PROGRAMMER" ||
+              (activeFilm.programFilmIds && activeFilm.programFilmIds.length > 0);
+
+            if (!isProgram) return null;
+
+            const lineupFilms = (activeFilm.programFilmIds || [])
+              .map((subId) => content.films.find((f) => f.id === subId))
+              .filter((f): f is Film => Boolean(f));
+
+            return (
+              <div className="program-lineup-section">
+                <div className="program-lineup-header">
+                  <div>
+                    <h3 className="program-lineup-title">INCLUDED FILMS</h3>
+                    <p className="program-lineup-sub">
+                      PROGRAM LINEUP · 수록 상영작 ({lineupFilms.length}편)
+                    </p>
+                  </div>
+                  {isAuthenticated && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAdminOpen(true)}
+                      className="program-lineup-admin-link"
+                      title="어드민에서 수록 영화 편집"
+                    >
+                      <Plus size={12} />
+                      어드민에서 수록작 변경
+                    </button>
+                  )}
+                </div>
+
+                {lineupFilms.length > 0 ? (
+                  <div className="program-lineup-grid">
+                    {lineupFilms.map((subFilm) => (
+                      <div
+                        key={subFilm.id}
+                        className="program-lineup-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openFilmDetail(subFilm.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openFilmDetail(subFilm.id);
+                          }
+                        }}
+                        title={`${subFilm.title} 상세 페이지로 이동`}
+                      >
+                        <div className="program-lineup-card-thumb">
+                          {subFilm.stillUrl || subFilm.heroImage || subFilm.posterImage ? (
+                            <img
+                              src={resolveAssetUrl(subFilm.stillUrl || subFilm.heroImage || subFilm.posterImage || "")}
+                              alt={subFilm.title}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="program-lineup-card-no-thumb">FILM</div>
+                          )}
+                          <div className="program-lineup-card-badge">
+                            <span>VIEW</span>
+                            <ArrowUpRight size={12} />
+                          </div>
+                        </div>
+
+                        <div className="program-lineup-card-info">
+                          <h4 className="program-lineup-card-title">{subFilm.title}</h4>
+                          {subFilm.titleKo && (
+                            <div className="program-lineup-card-title-ko">{subFilm.titleKo}</div>
+                          )}
+                          <div className="program-lineup-card-meta">
+                            {subFilm.director && <span>{subFilm.director}</span>}
+                            {subFilm.year && <span> · {subFilm.year}</span>}
+                            {subFilm.runtime && <span> · {subFilm.runtime}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="program-lineup-empty">
+                    <p style={{ margin: 0, fontSize: "12px", color: "#777" }}>
+                      현재 등록된 프로그램 수록 영화가 없습니다.
+                    </p>
+                    {isAuthenticated && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAdminOpen(true)}
+                        style={{
+                          marginTop: "8px",
+                          background: "#181818",
+                          border: "1px solid rgba(229, 9, 20, 0.4)",
+                          color: "#f87171",
+                          padding: "6px 12px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <Plus size={12} />
+                        어드민에서 수록작 선택하기
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Film Specific Artworks / Poster Archive Gallery */}
           {(() => {

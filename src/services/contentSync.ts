@@ -74,6 +74,12 @@ export function normalizeContent(raw: any): SiteContent {
           film.directorLabel = (film as any).directorLabel.trim();
         }
 
+        if (Array.isArray((film as any).programFilmIds)) {
+          film.programFilmIds = (film as any).programFilmIds
+            .filter((id: any) => typeof id === "string" && id.trim())
+            .map((id: string) => id.trim());
+        }
+
         if (Array.isArray(film.artworks)) {
           film.artworks = film.artworks
             .map((art: any) => {
@@ -241,6 +247,11 @@ export function normalizeContent(raw: any): SiteContent {
         subtitle: typeof p.subtitle === "string" ? p.subtitle.trim() : "",
         date: typeof p.date === "string" ? p.date.trim() : new Date().toISOString().slice(0, 10).replace(/-/g, "."),
         category: typeof p.category === "string" ? p.category.trim() : "ESSAY",
+        tags: Array.isArray(p.tags)
+          ? p.tags.filter((t: any) => typeof t === "string" && t.trim()).map((t: string) => t.trim().replace(/^#/, ""))
+          : typeof p.tags === "string"
+          ? (p.tags as string).split(/[,#\s]+/).map((t: string) => t.trim()).filter(Boolean)
+          : [],
         imageUrl: typeof p.imageUrl === "string" ? formatGoogleDriveImageUrl(p.imageUrl) : "",
         content: typeof p.content === "string" ? p.content : "",
         author: typeof p.author === "string" ? p.author.trim() : "LIGHTHOUSE",

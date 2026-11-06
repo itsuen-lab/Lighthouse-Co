@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Film, SiteContent, PromoCard, NavItem, DEFAULT_NAV_ITEMS, ContactInfo, INITIAL_CONTENT, ArtworkEntry, DirectorNote, JournalPost } from "../data/content.ts";
 import { normalizeContent, checkFirestoreStatus } from "../services/contentSync.ts";
 import { resolveAssetUrl, formatGoogleDriveImageUrl } from "../utils/assets.ts";
@@ -32,7 +32,11 @@ import {
   RefreshCw,
   Image as ImageIcon,
   BookOpen,
+  BarChart3,
+  Users,
+  TrendingUp,
 } from "lucide-react";
+import { fetchAnalyticsData, resetAnalyticsData, AnalyticsData } from "../services/analytics.ts";
 
 interface AdminPanelProps {
   content: SiteContent;
@@ -57,7 +61,7 @@ function getYouTubeVideoId(url?: string): string | null {
   return match ? match[1] : null;
 }
 
-type TabType = "films" | "featured" | "artworks" | "navigation" | "director" | "journal" | "about" | "promo" | "contact" | "security" | "export";
+type TabType = "films" | "featured" | "artworks" | "navigation" | "director" | "journal" | "about" | "promo" | "contact" | "analytics" | "security" | "export";
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   content,
@@ -107,6 +111,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Analytics states
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState<boolean>(false);
+  const [analyticsResetConfirm, setAnalyticsResetConfirm] = useState<boolean>(false);
+
+  const loadAnalytics = useCallback(async () => {
+    setIsLoadingAnalytics(true);
+    try {
+      const res = await fetchAnalyticsData();
+      setAnalyticsData(res);
+    } catch (e) {
+      console.warn("Analytics fetch failed:", e);
+    } finally {
+      setIsLoadingAnalytics(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "analytics") {
+      loadAnalytics();
+    }
+  }, [activeTab, loadAnalytics]);
+
   // Tab 3 Artwork Registration Form States
   const [newArtFilmId, setNewArtFilmId] = useState<string>("");
   const [newArtType, setNewArtType] = useState<string>("메인/오리지널 포스터");
@@ -128,11 +155,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   });
   const [newJournalImageUrl, setNewJournalImageUrl] = useState<string>("");
   const [newJournalAuthor, setNewJournalAuthor] = useState<string>("LIGHTHOUSE");
+  const [newJournalTagsInput, setNewJournalTagsInput] = useState<string>("");
   const [newJournalContent, setNewJournalContent] = useState<string>("");
   const [newJournalVisibleOnMain, setNewJournalVisibleOnMain] = useState<boolean>(true);
   const [newJournalVisibleOnBoard, setNewJournalVisibleOnBoard] = useState<boolean>(true);
   const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
   const [journalDeleteTarget, setJournalDeleteTarget] = useState<JournalPost | null>(null);
+  const [editingPostNewTag, setEditingPostNewTag] = useState<Record<string, string>>({});
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -146,11 +175,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
     const formattedImg = newJournalImageUrl.trim() ? formatGoogleDriveImageUrl(newJournalImageUrl.trim()) : "";
+    const parsedTags = newJournalTagsInput
+      .split(/[,#\s]+/)
+      .map((t) => t.trim().replace(/^#/, ""))
+      .filter((t) => t.length > 0);
+
     const newPost: JournalPost = {
       id: "journal-" + Date.now().toString(36),
       title: newJournalTitle.trim(),
       subtitle: newJournalSubtitle.trim() || undefined,
       category: newJournalCategory.trim() || "ESSAY",
+      tags: parsedTags,
       date: newJournalDate.trim() || "2026.03.15",
       imageUrl: formattedImg || undefined,
       author: newJournalAuthor.trim() || "LIGHTHOUSE",
@@ -173,10 +208,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewJournalTitle("");
     setNewJournalSubtitle("");
     setNewJournalImageUrl("");
+    setNewJournalTagsInput("");
     setNewJournalContent("");
     setNewJournalVisibleOnMain(true);
     setNewJournalVisibleOnBoard(true);
     showToast("새 저널 게시글이 성공적으로 등록 및 저장되었습니다.");
+  };
+
+  const handleAddTagToJournalPost = (postId: string, rawTag: string) => {
+    const clean = rawTag.trim().replace(/^#/, "");
+    if (!clean) return;
+    const currentList = data.journalPosts || INITIAL_CONTENT.journalPosts || [];
+    const nextList = currentList.map((post) => {
+      if (post.id !== postId) return post;
+      const currentTags = Array.isArray(post.tags) ? [...post.tags] : [];
+      if (currentTags.some((t) => t.toLowerCase() === clean.toLowerCase())) return post;
+      return { ...post, tags: [...currentTags, clean] };
+    });
+    const nextData: SiteContent = { ...data, journalPosts: nextList };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    setEditingPostNewTag((prev) => ({ ...prev, [postId]: "" }));
+    showToast(`‘#${clean}’ 태그가 추가되었습니다.`);
+  };
+
+  const handleRemoveTagFromJournalPost = (postId: string, tagToRemove: string) => {
+    const currentList = data.journalPosts || INITIAL_CONTENT.journalPosts || [];
+    const nextList = currentList.map((post) => {
+      if (post.id !== postId) return post;
+      const currentTags = Array.isArray(post.tags) ? post.tags : [];
+      return { ...post, tags: currentTags.filter((t) => t !== tagToRemove) };
+    });
+    const nextData: SiteContent = { ...data, journalPosts: nextList };
+    lastSaveTimeRef.current = Date.now();
+    setData(nextData);
+    onSave(nextData);
+    showToast(`‘#${tagToRemove}’ 태그가 삭제되었습니다.`);
   };
 
   const handleUpdateJournalPost = (id: string, field: keyof JournalPost, value: any) => {
@@ -1576,6 +1644,28 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
 
           <button
             type="button"
+            onClick={() => setActiveTab("analytics")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px 24px",
+              background: activeTab === "analytics" ? "#1e1e1e" : "transparent",
+              border: 0,
+              borderLeft: activeTab === "analytics" ? "3px solid #3b82f6" : "3px solid transparent",
+              color: activeTab === "analytics" ? "#60a5fa" : "#888",
+              fontSize: "13px",
+              fontWeight: 600,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            <BarChart3 size={16} />
+            <span>방문 및 조회 통계 (ANALYTICS)</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("security")}
             style={{
               display: "flex",
@@ -2232,6 +2322,114 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                             />
                           </div>
                         </div>
+
+                        {/* Program Lineup Selection (어 프로그램 바이 선택 시 관련 영화들 선택) */}
+                        {((currentFilm.bylinePrefix || "").trim().toUpperCase() === "A PROGRAM BY" ||
+                          currentFilm.directorLabel === "PROGRAMMER" ||
+                          (currentFilm.programFilmIds && currentFilm.programFilmIds.length > 0)) && (
+                          <div
+                            style={{
+                              marginTop: "16px",
+                              padding: "16px 18px",
+                              background: "rgba(229, 9, 20, 0.06)",
+                              border: "1px solid rgba(229, 9, 20, 0.3)",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                              <label style={{ fontSize: "12px", color: "#f87171", fontWeight: 700, letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span>📽️ 프로그램 수록 영화 선택 (PROGRAM LINEUP)</span>
+                              </label>
+                              <span style={{ fontSize: "11px", color: "#e50914", fontWeight: 600 }}>
+                                선택된 영화: {(currentFilm.programFilmIds || []).length}편
+                              </span>
+                            </div>
+                            <p style={{ margin: "0 0 12px 0", fontSize: "11px", color: "#bbb", lineHeight: 1.5 }}>
+                              ‘A PROGRAM BY’ 기획전에 포함할 영화들을 선택하세요. 선택된 영화들은 프로그램 상세 페이지 하단에 컴팩트한 카드 형태로 표시되며, 방문자가 클릭하면 해당 영화의 상세 페이지로 즉시 이동합니다.
+                            </p>
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+                                gap: "8px",
+                                maxHeight: "220px",
+                                overflowY: "auto",
+                                padding: "4px 2px",
+                              }}
+                            >
+                              {data.films
+                                .filter((f) => f.id !== currentFilm.id)
+                                .map((f) => {
+                                  const isSelected = (currentFilm.programFilmIds || []).includes(f.id);
+                                  return (
+                                    <button
+                                      key={f.id}
+                                      type="button"
+                                      onClick={() => {
+                                        const prev = currentFilm.programFilmIds || [];
+                                        const next = isSelected ? prev.filter((id) => id !== f.id) : [...prev, f.id];
+                                        handleFilmPatch(currentFilm.id, { programFilmIds: next });
+                                      }}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "10px",
+                                        padding: "8px 10px",
+                                        background: isSelected ? "rgba(229, 9, 20, 0.2)" : "#0c0c0c",
+                                        border: isSelected ? "1.5px solid #e50914" : "1px solid rgba(255,255,255,0.12)",
+                                        borderRadius: "3px",
+                                        cursor: "pointer",
+                                        textAlign: "left",
+                                        color: isSelected ? "#ffffff" : "#999999",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          width: "16px",
+                                          height: "16px",
+                                          borderRadius: "2px",
+                                          border: isSelected ? "1px solid #e50914" : "1px solid #555",
+                                          background: isSelected ? "#e50914" : "transparent",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          color: "#fff",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {isSelected && <Check size={11} />}
+                                      </div>
+                                      {(f.stillUrl || f.heroImage || f.posterImage) && (
+                                        <img
+                                          src={resolveAssetUrl(f.stillUrl || f.heroImage || f.posterImage || "")}
+                                          alt=""
+                                          style={{ width: "36px", height: "24px", objectFit: "cover", borderRadius: "1px", flexShrink: 0 }}
+                                        />
+                                      )}
+                                      <div style={{ overflow: "hidden", minWidth: 0, flex: 1 }}>
+                                        <div
+                                          style={{
+                                            fontSize: "12px",
+                                            fontWeight: isSelected ? 700 : 500,
+                                            color: isSelected ? "#fff" : "#ccc",
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                          }}
+                                        >
+                                          {f.title}
+                                        </div>
+                                        <div style={{ fontSize: "10px", color: isSelected ? "#fca5a5" : "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                          {f.director || "감독 미상"}{f.year ? ` · ${f.year}` : ""}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Informational notice: empty metadata won't appear */}
@@ -5704,6 +5902,63 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                     )}
                   </div>
 
+                  {/* Tag System Input for New Post */}
+                  <div style={{ marginBottom: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <label style={{ fontSize: "11px", color: "#aaa", fontWeight: 600 }}>
+                        태그 시스템 (Tags) — 쉼표(,) 또는 띄어쓰기 / #으로 구분하여 입력
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#888" }}>
+                        예: #누벨바그, #영화비평, #아카이브, #자크드미
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={newJournalTagsInput}
+                      onChange={(e) => setNewJournalTagsInput(e.target.value)}
+                      placeholder="#누벨바그, #아카이브, #영화비평, #에세이 (쉼표 또는 공백으로 여러 개 입력 가능)"
+                      style={{
+                        width: "100%",
+                        background: "#080808",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        color: "#fff",
+                        padding: "10px 12px",
+                        fontSize: "13px",
+                        outline: "none",
+                      }}
+                    />
+                    {(() => {
+                      const tags = newJournalTagsInput
+                        .split(/[,#\s]+/)
+                        .map((t) => t.trim().replace(/^#/, ""))
+                        .filter(Boolean);
+                      if (tags.length === 0) return null;
+                      return (
+                        <div style={{ marginTop: "8px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                          {tags.map((t, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                background: "rgba(245, 158, 11, 0.15)",
+                                border: "1px solid rgba(245, 158, 11, 0.4)",
+                                color: "#f59e0b",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                padding: "2px 8px",
+                                borderRadius: "2px",
+                              }}
+                            >
+                              #{t}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   <div style={{ marginBottom: "20px" }}>
                     <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "6px", fontWeight: 600 }}>
                       글 본문 내용 (Text Content) — 줄바꿈이 화면에 그대로 반영됩니다
@@ -6143,6 +6398,99 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                 />
                               </div>
 
+                              {/* Post Tag Management */}
+                              <div style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px dashed rgba(255, 255, 255, 0.16)", padding: "12px 14px", borderRadius: "2px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                                  <label style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 700, margin: 0 }}>
+                                    태그 관리 (Tags) — 태그 클릭 시 관련 글 모아보기 연동
+                                  </label>
+                                  <span style={{ fontSize: "11px", color: "#888" }}>
+                                    현재 등록된 태그 {(post.tags || []).length}개
+                                  </span>
+                                </div>
+
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: (post.tags || []).length > 0 ? "10px" : "4px" }}>
+                                  {(post.tags || []).map((tag, tIdx) => (
+                                    <span
+                                      key={tIdx}
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "5px",
+                                        background: "rgba(245, 158, 11, 0.15)",
+                                        border: "1px solid rgba(245, 158, 11, 0.45)",
+                                        color: "#f59e0b",
+                                        fontSize: "11px",
+                                        fontWeight: 700,
+                                        padding: "3px 8px",
+                                        borderRadius: "2px",
+                                      }}
+                                    >
+                                      <span>#{tag}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTagFromJournalPost(post.id, tag)}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          color: "#ef4444",
+                                          cursor: "pointer",
+                                          padding: 0,
+                                          fontSize: "12px",
+                                          lineHeight: 1,
+                                        }}
+                                        title="태그 삭제"
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  ))}
+                                  {(post.tags || []).length === 0 && (
+                                    <span style={{ fontSize: "11px", color: "#666" }}>등록된 태그가 없습니다. 아래에서 태그를 추가해 보세요.</span>
+                                  )}
+                                </div>
+
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                  <input
+                                    type="text"
+                                    placeholder="새 태그 입력 후 [추가] 또는 엔터 (예: 아카이브, 영화제)"
+                                    value={editingPostNewTag[post.id] || ""}
+                                    onChange={(e) => setEditingPostNewTag((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleAddTagToJournalPost(post.id, editingPostNewTag[post.id] || "");
+                                      }
+                                    }}
+                                    style={{
+                                      flex: 1,
+                                      background: "#080808",
+                                      border: "1px solid rgba(255,255,255,0.2)",
+                                      color: "#fff",
+                                      padding: "6px 10px",
+                                      fontSize: "12px",
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddTagToJournalPost(post.id, editingPostNewTag[post.id] || "")}
+                                    style={{
+                                      background: "#f59e0b",
+                                      border: "none",
+                                      color: "#000",
+                                      fontWeight: 700,
+                                      fontSize: "11px",
+                                      padding: "7px 14px",
+                                      cursor: "pointer",
+                                      borderRadius: "2px",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    + 태그 추가
+                                  </button>
+                                </div>
+                              </div>
+
                               <div>
                                 <label style={{ display: "block", fontSize: "11px", color: "#aaa", marginBottom: "4px" }}>
                                   본문 내용 (줄바꿈이 화면에 그대로 반영됩니다)
@@ -6286,6 +6634,26 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                                     <span style={{ fontSize: "11px", color: "#666", marginLeft: "4px" }}>
                                       작성자: {post.author}
                                     </span>
+                                  )}
+                                  {Array.isArray(post.tags) && post.tags.length > 0 && (
+                                    <div style={{ display: "inline-flex", gap: "4px", flexWrap: "wrap", marginLeft: "6px" }}>
+                                      {post.tags.map((t, tIdx) => (
+                                        <span
+                                          key={tIdx}
+                                          style={{
+                                            fontSize: "10px",
+                                            fontWeight: 700,
+                                            color: "#f59e0b",
+                                            background: "rgba(245, 158, 11, 0.12)",
+                                            padding: "1px 6px",
+                                            borderRadius: "2px",
+                                            border: "1px solid rgba(245, 158, 11, 0.3)",
+                                          }}
+                                        >
+                                          #{t}
+                                        </span>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -7367,6 +7735,670 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                     }}
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: ANALYTICS & VISITOR STATS (어드민 전용 방문 및 조회수 통계 대시보드) */}
+          {activeTab === "analytics" && (
+            <div style={{ maxWidth: "1080px" }}>
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "28px",
+                  flexWrap: "wrap",
+                  gap: "16px",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <h2 style={{ fontSize: "24px", fontWeight: 600, margin: 0, letterSpacing: "-0.03em", color: "#ffffff" }}>
+                      사이트 방문 및 조회 통계
+                    </h2>
+                    <span
+                      style={{
+                        background: "rgba(59, 130, 246, 0.2)",
+                        border: "1px solid #3b82f6",
+                        color: "#93c5fd",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "2px",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      ADMIN ONLY
+                    </span>
+                  </div>
+                  <p style={{ margin: "6px 0 0", color: "#888", fontSize: "13px" }}>
+                    관리자 전용 통계 대시보드입니다. 일반 방문자에게는 절대 노출되지 않으며, 실시간 Firestore 및 로컬 캐시와 연동됩니다.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={loadAnalytics}
+                    disabled={isLoadingAnalytics}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      background: "#1c1c1c",
+                      border: "1px solid rgba(255, 255, 255, 0.25)",
+                      color: "#fff",
+                      padding: "8px 16px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: isLoadingAnalytics ? "wait" : "pointer",
+                      borderRadius: "3px",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="최신 통계 데이터 새로고침"
+                  >
+                    <RefreshCw size={14} className={isLoadingAnalytics ? "animate-spin" : ""} />
+                    <span>{isLoadingAnalytics ? "갱신 중..." : "새로고침"}</span>
+                  </button>
+
+                  {analyticsResetConfirm ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const fresh = await resetAnalyticsData();
+                          setAnalyticsData(fresh);
+                          setAnalyticsResetConfirm(false);
+                          setToastMessage("통계 데이터가 성공적으로 초기화되었습니다.");
+                          setTimeout(() => setToastMessage(null), 3000);
+                        }}
+                        style={{
+                          background: "#dc2626",
+                          border: "1px solid #ef4444",
+                          color: "#fff",
+                          padding: "8px 14px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          borderRadius: "3px",
+                        }}
+                      >
+                        정말 초기화
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAnalyticsResetConfirm(false)}
+                        style={{
+                          background: "#222",
+                          border: "1px solid #555",
+                          color: "#bbb",
+                          padding: "8px 10px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          borderRadius: "3px",
+                        }}
+                      >
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setAnalyticsResetConfirm(true)}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid rgba(239, 68, 68, 0.4)",
+                        color: "#ef4444",
+                        padding: "8px 14px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        borderRadius: "3px",
+                      }}
+                      title="누적된 통계 수치를 0으로 재설정"
+                    >
+                      통계 초기화
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* KPI Cards Grid */}
+              {(() => {
+                const totalVisits = analyticsData?.totalVisits ?? 0;
+                const todayVisits = analyticsData?.todayVisits ?? 0;
+                const totalPostViews = Object.values(analyticsData?.postViews ?? {}).reduce((a, b) => a + b, 0);
+                const totalFilmViews = Object.values(analyticsData?.filmViews ?? {}).reduce((a, b) => a + b, 0);
+
+                return (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: "16px",
+                      marginBottom: "32px",
+                    }}
+                  >
+                    {/* KPI 1: Total Visits */}
+                    <div
+                      style={{
+                        background: "#111111",
+                        border: "1px solid rgba(59, 130, 246, 0.3)",
+                        padding: "20px 22px",
+                        borderRadius: "4px",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#93c5fd", letterSpacing: "0.08em" }}>
+                          총 누적 방문 수
+                        </span>
+                        <div style={{ background: "rgba(59, 130, 246, 0.15)", padding: "6px", borderRadius: "4px", color: "#60a5fa" }}>
+                          <Users size={16} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "32px", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.03em" }}>
+                        {totalVisits.toLocaleString()}
+                        <span style={{ fontSize: "14px", fontWeight: 400, color: "#777", marginLeft: "4px" }}>회</span>
+                      </div>
+                      <div style={{ marginTop: "6px", fontSize: "11px", color: "#60a5fa" }}>
+                        전체 기기 및 브라우저 세션 합산
+                      </div>
+                    </div>
+
+                    {/* KPI 2: Today Visits */}
+                    <div
+                      style={{
+                        background: "#111111",
+                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                        padding: "20px 22px",
+                        borderRadius: "4px",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#86efac", letterSpacing: "0.08em" }}>
+                          오늘 방문 수 (TODAY)
+                        </span>
+                        <div style={{ background: "rgba(34, 197, 94, 0.15)", padding: "6px", borderRadius: "4px", color: "#4ade80" }}>
+                          <TrendingUp size={16} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "32px", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.03em" }}>
+                        {todayVisits.toLocaleString()}
+                        <span style={{ fontSize: "14px", fontWeight: 400, color: "#777", marginLeft: "4px" }}>회</span>
+                      </div>
+                      <div style={{ marginTop: "6px", fontSize: "11px", color: "#4ade80" }}>
+                        오늘 고유 접속 세션
+                      </div>
+                    </div>
+
+                    {/* KPI 3: Total Journal Views */}
+                    <div
+                      style={{
+                        background: "#111111",
+                        border: "1px solid rgba(245, 158, 11, 0.3)",
+                        padding: "20px 22px",
+                        borderRadius: "4px",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#fde047", letterSpacing: "0.08em" }}>
+                          저널 글 총 조회수
+                        </span>
+                        <div style={{ background: "rgba(245, 158, 11, 0.15)", padding: "6px", borderRadius: "4px", color: "#fbbf24" }}>
+                          <BookOpen size={16} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "32px", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.03em" }}>
+                        {totalPostViews.toLocaleString()}
+                        <span style={{ fontSize: "14px", fontWeight: 400, color: "#777", marginLeft: "4px" }}>회</span>
+                      </div>
+                      <div style={{ marginTop: "6px", fontSize: "11px", color: "#fbbf24" }}>
+                        전체 저널 게시글 열람 합계
+                      </div>
+                    </div>
+
+                    {/* KPI 4: Total Film Detail Views */}
+                    <div
+                      style={{
+                        background: "#111111",
+                        border: "1px solid rgba(236, 72, 153, 0.3)",
+                        padding: "20px 22px",
+                        borderRadius: "4px",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#f472b6", letterSpacing: "0.08em" }}>
+                          상영작/프로그램 상세 조회수
+                        </span>
+                        <div style={{ background: "rgba(236, 72, 153, 0.15)", padding: "6px", borderRadius: "4px", color: "#f472b6" }}>
+                          <FilmIcon size={16} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "32px", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.03em" }}>
+                        {totalFilmViews.toLocaleString()}
+                        <span style={{ fontSize: "14px", fontWeight: 400, color: "#777", marginLeft: "4px" }}>회</span>
+                      </div>
+                      <div style={{ marginTop: "6px", fontSize: "11px", color: "#f472b6" }}>
+                        개별 영화 및 프로그램 상세 열람
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 7-Day Visits Visual Trend Chart */}
+              {(() => {
+                // Generate last 7 days keys
+                const days: { dateStr: string; label: string; count: number }[] = [];
+                const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+                const now = new Date();
+
+                for (let i = 6; i >= 0; i--) {
+                  const target = new Date();
+                  target.setDate(now.getDate() - i);
+                  const yyyy = target.getFullYear();
+                  const mm = String(target.getMonth() + 1).padStart(2, "0");
+                  const dd = String(target.getDate()).padStart(2, "0");
+                  const dateStr = `${yyyy}-${mm}-${dd}`;
+                  const count = analyticsData?.dailyVisits?.[dateStr] ?? 0;
+                  const label = `${mm}/${dd} (${dayLabels[target.getDay()]})`;
+                  days.push({ dateStr, label, count });
+                }
+
+                const maxCount = Math.max(1, ...days.map((d) => d.count));
+
+                return (
+                  <div
+                    style={{
+                      background: "#101010",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "4px",
+                      padding: "24px 28px",
+                      marginBottom: "32px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                      <div>
+                        <h3 style={{ fontSize: "15px", fontWeight: 600, margin: 0, color: "#fff" }}>
+                          최근 7일 일별 방문자 수 추이
+                        </h3>
+                        <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#777" }}>
+                          일자별 고유 방문자 세션 추세를 시각적으로 확인합니다.
+                        </p>
+                      </div>
+                      <span style={{ fontSize: "11px", color: "#888" }}>
+                        최대 일일 방문: <strong style={{ color: "#fff" }}>{maxCount}회</strong>
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "space-between",
+                        height: "170px",
+                        padding: "16px 8px 0",
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+                        gap: "12px",
+                      }}
+                    >
+                      {days.map((day, idx) => {
+                        const heightPct = Math.round((day.count / maxCount) * 100);
+                        const isToday = idx === days.length - 1;
+                        return (
+                          <div
+                            key={day.dateStr}
+                            style={{
+                              flex: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              height: "100%",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                color: isToday ? "#4ade80" : "#ffffff",
+                                marginBottom: "6px",
+                              }}
+                            >
+                              {day.count}
+                            </span>
+                            <div
+                              style={{
+                                width: "100%",
+                                maxWidth: "56px",
+                                height: `${Math.max(6, heightPct)}%`,
+                                background: isToday
+                                  ? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
+                                  : "linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)",
+                                borderRadius: "3px 3px 0 0",
+                                transition: "all 0.3s ease",
+                                boxShadow: isToday ? "0 0 10px rgba(34, 197, 94, 0.4)" : "none",
+                              }}
+                              title={`${day.label}: ${day.count}회 방문`}
+                            />
+                            <span
+                              style={{
+                                marginTop: "8px",
+                                fontSize: "11px",
+                                color: isToday ? "#86efac" : "#888",
+                                fontWeight: isToday ? 700 : 400,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {day.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Two-Column Ranking Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                {/* Left Column: Popular Journal Posts */}
+                {(() => {
+                  const allPosts = data.journalPosts && data.journalPosts.length > 0
+                    ? data.journalPosts
+                    : (INITIAL_CONTENT.journalPosts || []);
+
+                  const sortedPosts = [...allPosts].sort((a, b) => {
+                    const viewA = analyticsData?.postViews?.[a.id] ?? 0;
+                    const viewB = analyticsData?.postViews?.[b.id] ?? 0;
+                    return viewB - viewA;
+                  });
+
+                  const maxPostView = Math.max(1, ...(sortedPosts.map((p) => analyticsData?.postViews?.[p.id] ?? 0)));
+
+                  return (
+                    <div
+                      style={{
+                        background: "#101010",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        borderRadius: "4px",
+                        padding: "24px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                        <div>
+                          <h3 style={{ fontSize: "15px", fontWeight: 600, margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <BookOpen size={16} color="#fbbf24" />
+                            <span>인기 저널 글 조회 순위</span>
+                          </h3>
+                          <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#777" }}>
+                            방문자들이 가장 많이 읽은 저널 글 순서입니다.
+                          </p>
+                        </div>
+                        <span style={{ fontSize: "11px", color: "#888" }}>총 {sortedPosts.length}편</span>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {sortedPosts.map((post, idx) => {
+                          const views = analyticsData?.postViews?.[post.id] ?? 0;
+                          const ratio = Math.round((views / maxPostView) * 100);
+                          const isTop3 = idx < 3;
+
+                          return (
+                            <div
+                              key={post.id}
+                              style={{
+                                background: "#0c0c0c",
+                                border: "1px solid rgba(255, 255, 255, 0.08)",
+                                padding: "12px 14px",
+                                borderRadius: "3px",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+                                  <span
+                                    style={{
+                                      fontSize: "11px",
+                                      fontWeight: 800,
+                                      width: "22px",
+                                      height: "22px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      borderRadius: "2px",
+                                      background: isTop3 ? "rgba(245, 158, 11, 0.2)" : "#181818",
+                                      color: isTop3 ? "#fbbf24" : "#888",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    #{idx + 1}
+                                  </span>
+                                  <div style={{ overflow: "hidden", minWidth: 0 }}>
+                                    <div
+                                      style={{
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        color: "#f1f1ee",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                      }}
+                                    >
+                                      {post.title}
+                                    </div>
+                                    <div style={{ fontSize: "10px", color: "#777", marginTop: "2px" }}>
+                                      {post.category && <span style={{ color: "#aaa" }}>[{post.category}] </span>}
+                                      {post.author ? `${post.author} · ` : ""}{post.date}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    background: "rgba(245, 158, 11, 0.12)",
+                                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                                    color: "#fde047",
+                                    padding: "3px 8px",
+                                    borderRadius: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span>{views.toLocaleString()}</span>
+                                  <span style={{ fontSize: "9px", color: "#bbb" }}>회</span>
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.06)", borderRadius: "2px", overflow: "hidden" }}>
+                                <div
+                                  style={{
+                                    width: `${ratio}%`,
+                                    height: "100%",
+                                    background: isTop3 ? "#f59e0b" : "#4b5563",
+                                    borderRadius: "2px",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Right Column: Popular Films & Programs */}
+                {(() => {
+                  const sortedFilms = [...data.films].sort((a, b) => {
+                    const viewA = analyticsData?.filmViews?.[a.id] ?? 0;
+                    const viewB = analyticsData?.filmViews?.[b.id] ?? 0;
+                    return viewB - viewA;
+                  });
+
+                  const maxFilmView = Math.max(1, ...(sortedFilms.map((f) => analyticsData?.filmViews?.[f.id] ?? 0)));
+
+                  return (
+                    <div
+                      style={{
+                        background: "#101010",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        borderRadius: "4px",
+                        padding: "24px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                        <div>
+                          <h3 style={{ fontSize: "15px", fontWeight: 600, margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <FilmIcon size={16} color="#f472b6" />
+                            <span>인기 상영작 / 프로그램 순위</span>
+                          </h3>
+                          <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#777" }}>
+                            상세 정보가 가장 많이 열람된 상영작 및 프로그램 순서입니다.
+                          </p>
+                        </div>
+                        <span style={{ fontSize: "11px", color: "#888" }}>총 {sortedFilms.length}편</span>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {sortedFilms.map((film, idx) => {
+                          const views = analyticsData?.filmViews?.[film.id] ?? 0;
+                          const ratio = Math.round((views / maxFilmView) * 100);
+                          const isTop3 = idx < 3;
+                          const isProgram = (film.bylinePrefix || "").trim().toUpperCase() === "A PROGRAM BY" || film.directorLabel === "PROGRAMMER";
+
+                          return (
+                            <div
+                              key={film.id}
+                              style={{
+                                background: "#0c0c0c",
+                                border: "1px solid rgba(255, 255, 255, 0.08)",
+                                padding: "12px 14px",
+                                borderRadius: "3px",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+                                  <span
+                                    style={{
+                                      fontSize: "11px",
+                                      fontWeight: 800,
+                                      width: "22px",
+                                      height: "22px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      borderRadius: "2px",
+                                      background: isTop3 ? "rgba(236, 72, 153, 0.2)" : "#181818",
+                                      color: isTop3 ? "#f472b6" : "#888",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    #{idx + 1}
+                                  </span>
+
+                                  {(film.stillUrl || film.heroImage || film.posterImage) && (
+                                    <img
+                                      src={resolveAssetUrl(film.stillUrl || film.heroImage || film.posterImage || "")}
+                                      alt=""
+                                      style={{ width: "38px", height: "26px", objectFit: "cover", borderRadius: "2px", flexShrink: 0 }}
+                                    />
+                                  )}
+
+                                  <div style={{ overflow: "hidden", minWidth: 0 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          fontWeight: 600,
+                                          color: "#f1f1ee",
+                                          whiteSpace: "nowrap",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                        }}
+                                      >
+                                        {film.title}
+                                      </span>
+                                      {isProgram && (
+                                        <span style={{ fontSize: "9px", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.4)", padding: "0 4px", borderRadius: "1px" }}>
+                                          PROGRAM
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ fontSize: "10px", color: "#777", marginTop: "2px" }}>
+                                      {film.director || "감독 미상"}{film.year ? ` · ${film.year}` : ""}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    background: "rgba(236, 72, 153, 0.12)",
+                                    border: "1px solid rgba(236, 72, 153, 0.3)",
+                                    color: "#f472b6",
+                                    padding: "3px 8px",
+                                    borderRadius: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span>{views.toLocaleString()}</span>
+                                  <span style={{ fontSize: "9px", color: "#bbb" }}>회</span>
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.06)", borderRadius: "2px", overflow: "hidden" }}>
+                                <div
+                                  style={{
+                                    width: `${ratio}%`,
+                                    height: "100%",
+                                    background: isTop3 ? "#ec4899" : "#4b5563",
+                                    borderRadius: "2px",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Footer Notice */}
+              <div
+                style={{
+                  marginTop: "28px",
+                  padding: "14px 18px",
+                  background: "rgba(255, 255, 255, 0.02)",
+                  border: "1px dashed rgba(255, 255, 255, 0.15)",
+                  borderRadius: "3px",
+                  fontSize: "12px",
+                  color: "#888",
+                  lineHeight: 1.6,
+                }}
+              >
+                🔒 <strong>보안 및 개인정보 보호 안내:</strong> 본 통계 시스템은 일반 사용자 화면에 카운터나 로깅 표시를 일절 노출하지 않으며(Zero-UI), 브라우저 세션 기반으로 중복 집계를 방지하여 실제 순수 방문/열람 지표를 제공합니다.
               </div>
             </div>
           )}
