@@ -48,6 +48,7 @@ interface AdminPanelProps {
   onPasswordChange: (newPw: string) => void;
   stealthMode: boolean;
   onToggleStealth: (stealth: boolean) => void;
+  initialTab?: string;
 }
 
 function getYouTubeVideoId(url?: string): string | null {
@@ -61,7 +62,7 @@ function getYouTubeVideoId(url?: string): string | null {
   return match ? match[1] : null;
 }
 
-type TabType = "films" | "featured" | "artworks" | "navigation" | "director" | "journal" | "about" | "promo" | "contact" | "analytics" | "security" | "export";
+type TabType = "films" | "featured" | "artworks" | "navigation" | "director" | "journal" | "about" | "logo" | "promo" | "contact" | "analytics" | "security" | "export";
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   content,
@@ -73,6 +74,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onPasswordChange,
   stealthMode,
   onToggleStealth,
+  initialTab,
 }) => {
   const [data, setData] = useState<SiteContent>(() => normalizeContent(content));
   const [cloudStatus, setCloudStatus] = useState<{ connected: boolean; filmCount: number; updatedAt?: string }>({
@@ -98,7 +100,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setData(normalizeContent(content));
   }, [content]);
 
-  const [activeTab, setActiveTab] = useState<TabType>("films");
+  const [activeTab, setActiveTab] = useState<TabType>((initialTab as TabType) || "films");
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
@@ -1596,6 +1598,28 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
           >
             <Info size={16} />
             <span>회사 소개 (ABOUT)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("logo")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "14px 24px",
+              background: activeTab === "logo" ? "#1e1e1e" : "transparent",
+              border: 0,
+              borderLeft: activeTab === "logo" ? "3px solid #e50914" : "3px solid transparent",
+              color: activeTab === "logo" ? "#fff" : "#888",
+              fontSize: "13px",
+              fontWeight: 600,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            <Download size={16} />
+            <span>로고 다운로드 링크 (LOGO)</span>
           </button>
 
           <button
@@ -7024,6 +7048,242 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                     저장 확인
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: LOGO MANAGEMENT (DEDICATED BRAND ASSET LINKS) */}
+          {activeTab === "logo" && (
+            <div style={{ maxWidth: "1000px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "24px",
+                  paddingBottom: "16px",
+                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: "0 0 6px 0" }}>
+                    로고 다운로드 링크 관리 (LOGO ASSETS)
+                  </h2>
+                  <p style={{ fontSize: "13px", color: "#888", margin: 0, lineHeight: 1.5 }}>
+                    로고 페이지(#logo)의 'PNG 다운로드' 버튼 클릭 시 새 탭에서 열릴 링크 URL을 실시간으로 수정합니다.
+                  </p>
+                </div>
+                <a
+                  href="#logo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "#181818",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    color: "#fff",
+                    padding: "9px 16px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    borderRadius: "3px",
+                    textDecoration: "none",
+                  }}
+                >
+                  <span>로고 페이지 바로가기</span>
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
+                {/* 1. White Logo (Dark BG) */}
+                <div style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.12)", padding: "20px", borderRadius: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ background: "#fff", color: "#000", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "2px" }}>WHITE</span>
+                    <label style={{ fontSize: "13px", fontWeight: 700, color: "#f1f1ee" }}>
+                      화이트 로고 다운로드 링크 (다크 배경용)
+                    </label>
+                  </div>
+                  <p style={{ fontSize: "11px", color: "#888", margin: "0 0 10px 0", lineHeight: 1.4 }}>
+                    구글 드라이브 공유 링크, 클라우드 스토리지, CDN 주소, 이미지 파일 링크 등을 입력하세요.
+                  </p>
+                  <input
+                    type="text"
+                    value={data.logo?.whiteLogoUrl || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setData((prev) => ({
+                        ...prev,
+                        logo: {
+                          ...(prev.logo || {}),
+                          whiteLogoUrl: val,
+                        },
+                      }));
+                    }}
+                    placeholder="/assets/aistudio/Lighthouse_WHITE_783a3cff.png 또는 외부 링크 URL"
+                    style={{
+                      width: "100%",
+                      background: "#141414",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      color: "#fff",
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      outline: "none",
+                      fontFamily: "monospace",
+                      boxSizing: "border-box",
+                      borderRadius: "3px",
+                    }}
+                  />
+
+                  {/* Open in new tab button */}
+                  <div style={{ marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <a
+                      href={data.logo?.whiteLogoUrl?.trim() || "/assets/aistudio/Lighthouse_WHITE_783a3cff.png"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "#1c1c1c",
+                        border: "1px solid #333",
+                        color: "#fff",
+                        padding: "6px 12px",
+                        fontSize: "11px",
+                        borderRadius: "3px",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <ExternalLink size={12} />
+                      <span>입력된 링크 새 탭에서 열어보기</span>
+                    </a>
+                  </div>
+
+                  <div style={{ marginTop: "14px", background: "#000", border: "1px solid #222", padding: "16px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "70px", borderRadius: "3px" }}>
+                    <img
+                      src={resolveAssetUrl(data.logo?.whiteLogoUrl || "/assets/aistudio/Lighthouse_WHITE_783a3cff.png")}
+                      alt="White logo preview"
+                      style={{ maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = resolveAssetUrl("/assets/aistudio/Lighthouse_WHITE_783a3cff.png");
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Black Logo (Light BG) */}
+                <div style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.12)", padding: "20px", borderRadius: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ background: "#000", color: "#fff", border: "1px solid #444", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "2px" }}>BLACK</span>
+                    <label style={{ fontSize: "13px", fontWeight: 700, color: "#f1f1ee" }}>
+                      블랙 로고 다운로드 링크 (라이트 배경용)
+                    </label>
+                  </div>
+                  <p style={{ fontSize: "11px", color: "#888", margin: "0 0 10px 0", lineHeight: 1.4 }}>
+                    구글 드라이브 공유 링크, 클라우드 스토리지, CDN 주소, 이미지 파일 링크 등을 입력하세요.
+                  </p>
+                  <input
+                    type="text"
+                    value={data.logo?.blackLogoUrl || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setData((prev) => ({
+                        ...prev,
+                        logo: {
+                          ...(prev.logo || {}),
+                          blackLogoUrl: val,
+                        },
+                      }));
+                    }}
+                    placeholder="/assets/aistudio/Lighthouse_BLACK_cb3958b4.png 또는 외부 링크 URL"
+                    style={{
+                      width: "100%",
+                      background: "#141414",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      color: "#fff",
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      outline: "none",
+                      fontFamily: "monospace",
+                      boxSizing: "border-box",
+                      borderRadius: "3px",
+                    }}
+                  />
+
+                  {/* Open in new tab button */}
+                  <div style={{ marginTop: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <a
+                      href={data.logo?.blackLogoUrl?.trim() || "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "#1c1c1c",
+                        border: "1px solid #333",
+                        color: "#fff",
+                        padding: "6px 12px",
+                        fontSize: "11px",
+                        borderRadius: "3px",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <ExternalLink size={12} />
+                      <span>입력된 링크 새 탭에서 열어보기</span>
+                    </a>
+                  </div>
+
+                  <div style={{ marginTop: "14px", background: "#ffffff", border: "1px solid #ddd", padding: "16px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "70px", borderRadius: "3px" }}>
+                    <img
+                      src={resolveAssetUrl(data.logo?.blackLogoUrl || "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png")}
+                      alt="Black logo preview"
+                      style={{ maxHeight: "40px", maxWidth: "100%", objectFit: "contain" }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = resolveAssetUrl("/assets/aistudio/Lighthouse_BLACK_cb3958b4.png");
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Save Bar */}
+              <div
+                style={{
+                  marginTop: "24px",
+                  paddingTop: "18px",
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
+                <div style={{ fontSize: "12px", color: "#888" }}>
+                  * 링크를 입력하고 [로고 링크 저장하기]를 누르면 로고 페이지의 PNG 다운로드 버튼에 즉시 반영됩니다.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSave(data);
+                    showToast("로고 다운로드 링크가 성공적으로 저장되었습니다.");
+                  }}
+                  style={{
+                    background: "#e50914",
+                    border: "none",
+                    color: "#fff",
+                    padding: "10px 24px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    borderRadius: "3px",
+                    transition: "background 0.2s ease",
+                  }}
+                >
+                  로고 링크 저장하기
+                </button>
               </div>
             </div>
           )}

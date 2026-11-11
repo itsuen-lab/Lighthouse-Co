@@ -179,8 +179,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxImage, activeJournalPost, readingJournalPost, isLogoPage]);
   
-  // Security & Admin Authentication State
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [adminInitialTab, setAdminInitialTab] = useState<string>("films");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string>(() => {
     const masterPw = "Diddlsah211!!@@";
@@ -2311,7 +2311,10 @@ export default function App() {
             {isAuthenticated && (
               <button
                 type="button"
-                onClick={() => setIsAdminOpen(true)}
+                onClick={() => {
+                  setAdminInitialTab("logo");
+                  setIsAdminOpen(true);
+                }}
                 className="logo-page-admin-btn"
                 title="어드민에서 로고 URL 설정"
               >
@@ -2363,17 +2366,17 @@ export default function App() {
                 </div>
                 <div className="logo-card-actions">
                   <a
-                    href={resolveAssetUrl("/assets/aistudio/Lighthouse_WHITE_783a3cff.png")}
-                    download="Lighthouse_WHITE.png"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleDirectDownload(
-                        "/assets/aistudio/Lighthouse_WHITE_783a3cff.png",
-                        "Lighthouse_WHITE.png"
-                      );
-                    }}
+                    href={
+                      content.logo?.whiteLogoUrl?.trim()
+                        ? (content.logo.whiteLogoUrl.trim().startsWith("http://") || content.logo.whiteLogoUrl.trim().startsWith("https://")
+                            ? content.logo.whiteLogoUrl.trim()
+                            : resolveAssetUrl(content.logo.whiteLogoUrl.trim()))
+                        : resolveAssetUrl("/assets/aistudio/Lighthouse_WHITE_783a3cff.png")
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="logo-action-btn logo-btn-primary"
-                    title="화이트 로고 PNG 파일 바로 다운로드"
+                    title="새 탭에서 화이트 로고 다운로드 링크 열기"
                   >
                     <Download size={14} />
                     <span>PNG 다운로드</span>
@@ -2416,17 +2419,17 @@ export default function App() {
                 </div>
                 <div className="logo-card-actions">
                   <a
-                    href={resolveAssetUrl("/assets/aistudio/Lighthouse_BLACK_cb3958b4.png")}
-                    download="Lighthouse_BLACK.png"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleDirectDownload(
-                        "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png",
-                        "Lighthouse_BLACK.png"
-                      );
-                    }}
+                    href={
+                      content.logo?.blackLogoUrl?.trim()
+                        ? (content.logo.blackLogoUrl.trim().startsWith("http://") || content.logo.blackLogoUrl.trim().startsWith("https://")
+                            ? content.logo.blackLogoUrl.trim()
+                            : resolveAssetUrl(content.logo.blackLogoUrl.trim()))
+                        : resolveAssetUrl("/assets/aistudio/Lighthouse_BLACK_cb3958b4.png")
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="logo-action-btn logo-btn-primary"
-                    title="블랙 로고 PNG 파일 바로 다운로드"
+                    title="새 탭에서 블랙 로고 다운로드 링크 열기"
                   >
                     <Download size={14} />
                     <span>PNG 다운로드</span>
@@ -3370,6 +3373,7 @@ export default function App() {
             onPasswordChange={handlePasswordChange}
             stealthMode={stealthMode}
             onToggleStealth={handleToggleStealth}
+            initialTab={adminInitialTab}
           />
         </React.Suspense>
       )}
