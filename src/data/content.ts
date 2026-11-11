@@ -112,6 +112,12 @@ export interface AboutInfo {
   en?: string;
 }
 
+export interface LogoInfo {
+  whiteLogoUrl?: string; // 화이트 버전 로고 (PNG 투명)
+  blackLogoUrl?: string; // 블랙 버전 로고 (PNG 투명)
+  description?: string;  // 로고 설명/가이드
+}
+
 export interface SiteContent {
   navItems?: NavItem[];
   featured: string[];
@@ -137,6 +143,7 @@ export interface SiteContent {
   contact?: ContactInfo;
   artworksVisible?: boolean;
   mainArtworkIds?: string[];
+  logo?: LogoInfo;
 }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
@@ -612,5 +619,10 @@ export const INITIAL_CONTENT: SiteContent = {
   "about": {
     "ko": "라이트하우스는 예술영화관 프로그래머에 의해 설립된 영화 수입/배급사입니다.\n\n영화 프로그램의 맥락을 배급과 연결 시켜, 동시대 관객들에게 가장 유효한 영화를 선보입니다.\n\n가장 영화적인 언어를 마케팅에 적용해 영화 산업의 저변을 확대하고, 새로운 경험을 발명합니다.",
     "en": "Lighthouse Co. is a Korean art-house film distributor founded on extensive experience in cinema programming and film festival planning. The team is led by former theater programmers and includes in-house design and marketing staff, as well as a studio capable of DCP production. We are committed to introducing each film with care, respecting both its context and the environment in which it is screened."
+  },
+  "logo": {
+    "whiteLogoUrl": "/assets/aistudio/Lighthouse_WHITE_783a3cff.png",
+    "blackLogoUrl": "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png",
+    "description": "LIGHTHOUSE BRAND WORDMARK (PNG TRANSPARENT)"
   }
 };

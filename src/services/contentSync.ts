@@ -199,6 +199,22 @@ export function normalizeContent(raw: any): SiteContent {
     en: typeof rawAbout.en === "string" ? rawAbout.en : defaultAbout.en,
   };
 
+  const defaultLogo = INITIAL_CONTENT.logo || {
+    whiteLogoUrl: "/assets/aistudio/Lighthouse_WHITE_783a3cff.png",
+    blackLogoUrl: "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png",
+    description: "LIGHTHOUSE BRAND WORDMARK (PNG TRANSPARENT)",
+  };
+  const rawLogo = (base.logo && typeof base.logo === "object" ? base.logo : {}) as any;
+  base.logo = {
+    whiteLogoUrl: typeof rawLogo.whiteLogoUrl === "string" && rawLogo.whiteLogoUrl.trim()
+      ? formatGoogleDriveImageUrl(rawLogo.whiteLogoUrl.trim())
+      : defaultLogo.whiteLogoUrl,
+    blackLogoUrl: typeof rawLogo.blackLogoUrl === "string" && rawLogo.blackLogoUrl.trim()
+      ? formatGoogleDriveImageUrl(rawLogo.blackLogoUrl.trim())
+      : defaultLogo.blackLogoUrl,
+    description: typeof rawLogo.description === "string" ? rawLogo.description : defaultLogo.description,
+  };
+
   // 6. Validate & sanitize directorNotes
   base.directorNotesVisible = base.directorNotesVisible !== false;
   if (Array.isArray(base.directorNotes) && base.directorNotes.length > 0) {

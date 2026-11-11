@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { INITIAL_CONTENT, Film, SiteContent, DEFAULT_NAV_ITEMS, NavItem, ArtworkEntry, JournalPost } from "./data/content.ts";
 import { subscribeToSiteContent, saveSiteContentToCloud, normalizeContent } from "./services/contentSync.ts";
 import { recordSiteVisit, recordPostView, recordFilmView } from "./services/analytics.ts";
-import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus, ZoomIn, X, ExternalLink, Search, ArrowLeft, ArrowRight, LayoutGrid, List, BookOpen } from "lucide-react";
+import { SlidersHorizontal, ArrowUpRight, Check, Send, Loader2, Sparkles, AlertCircle, Plus, ZoomIn, X, ExternalLink, Search, ArrowLeft, ArrowRight, LayoutGrid, List, BookOpen, Download } from "lucide-react";
 import { AdminAuthModal } from "./components/AdminAuthModal.tsx";
 import { ArtworksSection } from "./components/ArtworksSection.tsx";
 import { resolveAssetUrl } from "./utils/assets.ts";
@@ -122,6 +122,32 @@ export default function App() {
   const [journalSearchQuery, setJournalSearchQuery] = useState<string>("" );
   const [journalViewMode, setJournalViewMode] = useState<"grid" | "table">("grid");
 
+  // Dedicated Logo Brand Asset Page State
+  const [isLogoPage, setIsLogoPage] = useState<boolean>(false);
+  const handleDirectDownload = async (url: string, filename: string) => {
+    try {
+      const targetUrl = resolveAssetUrl(url);
+      const res = await fetch(targetUrl);
+      if (!res.ok) throw new Error("Fetch failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      const a = document.createElement("a");
+      a.href = resolveAssetUrl(url);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   // Poster & Artwork Lightbox Zoom Modal State
   interface LightboxItem {
     url: string;
@@ -143,11 +169,15 @@ export default function App() {
         if (lightboxImage) setLightboxImage(null);
         if (activeJournalPost) setActiveJournalPost(null);
         if (readingJournalPost) setReadingJournalPost(null);
+        if (isLogoPage) {
+          setIsLogoPage(false);
+          window.location.hash = "about";
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [lightboxImage, activeJournalPost, readingJournalPost]);
+  }, [lightboxImage, activeJournalPost, readingJournalPost, isLogoPage]);
   
   // Security & Admin Authentication State
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -331,8 +361,19 @@ export default function App() {
       return;
     }
 
+    if (hash === "logo" || hash === "logo-page") {
+      setIsLogoPage(true);
+      setIsJournalPage(false);
+      setActiveFilmId(null);
+      setReadingJournalPost(null);
+      window.scrollTo(0, 0);
+      return;
+    }
+    setIsLogoPage(false);
+
     if (hash === "journal" || hash === "journal-page" || hash.startsWith("journal-")) {
       setIsJournalPage(true);
+      setIsLogoPage(false);
       setActiveFilmId(null);
       if (hash.startsWith("journal-") && hash !== "journal-page") {
         const postId = hash.replace("journal-", "");
@@ -635,6 +676,7 @@ export default function App() {
 
   const openFilmDetail = (id: string, e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    setIsLogoPage(false);
     setIsJournalPage(false);
     setReadingJournalPost(null);
     window.location.hash = `film-${id}`;
@@ -649,6 +691,7 @@ export default function App() {
 
   const openJournalPage = (postId?: string) => {
     setIsJournalPage(true);
+    setIsLogoPage(false);
     setActiveFilmId(null);
     if (postId) {
       const found = (content.journalPosts || INITIAL_CONTENT.journalPosts || []).find((p) => p.id === postId);
@@ -666,6 +709,21 @@ export default function App() {
     setIsJournalPage(false);
     setReadingJournalPost(null);
     window.location.hash = "home";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openLogoPage = () => {
+    setIsLogoPage(true);
+    setIsJournalPage(false);
+    setActiveFilmId(null);
+    setReadingJournalPost(null);
+    window.location.hash = "logo";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeLogoPage = () => {
+    setIsLogoPage(false);
+    window.location.hash = "about";
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -824,9 +882,10 @@ export default function App() {
     }
 
     e.preventDefault();
-    if (activeFilmId || isJournalPage) {
+    if (activeFilmId || isJournalPage || isLogoPage) {
       setActiveFilmId(null);
       setIsJournalPage(false);
+      setIsLogoPage(false);
       setReadingJournalPost(null);
       window.location.hash = "home";
     } else {
@@ -841,9 +900,14 @@ export default function App() {
       openJournalPage();
       return;
     }
-    if (activeFilmId || isJournalPage) {
+    if (sectionId === "logo") {
+      openLogoPage();
+      return;
+    }
+    if (activeFilmId || isJournalPage || isLogoPage) {
       setActiveFilmId(null);
       setIsJournalPage(false);
+      setIsLogoPage(false);
       setReadingJournalPost(null);
       window.location.hash = sectionId;
       requestAnimationFrame(() => {
@@ -862,6 +926,8 @@ export default function App() {
   useEffect(() => {
     if (activeFilm) {
       document.title = `${activeFilm.title} — Lighthouse Co.`;
+    } else if (isLogoPage) {
+      document.title = "Logo & Brand Assets — Lighthouse Co.";
     } else if (isJournalPage) {
       if (readingJournalPost) {
         document.title = `${readingJournalPost.title} — Lighthouse Journal`;
@@ -871,7 +937,7 @@ export default function App() {
     } else {
       document.title = "Lighthouse Co.";
     }
-  }, [activeFilm, isJournalPage, readingJournalPost]);
+  }, [activeFilm, isJournalPage, isLogoPage, readingJournalPost]);
 
   return (
     <>
@@ -890,7 +956,7 @@ export default function App() {
             onError={(e) => {
               const target = e.currentTarget;
               target.onerror = null;
-              target.src = resolveAssetUrl("/images/lighthouse-logo.png");
+              target.src = resolveAssetUrl("/assets/aistudio/Lighthouse_a4cd72d2.png");
             }}
           />
           <span className="location">SEOUL · KOREA</span>
@@ -950,7 +1016,7 @@ export default function App() {
       </header>
 
       {/* Main Site Container */}
-      <main id="site" className={activeFilm || isJournalPage ? "hidden" : ""}>
+      <main id="site" className={activeFilm || isJournalPage || isLogoPage ? "hidden" : ""}>
         {/* Featured Hero Sticky Curtain Stack */}
         <section
           aria-label="Featured films and projects"
@@ -1188,8 +1254,19 @@ export default function App() {
             </div>
           </div>
 
-          {/* User Request: ABOUT 글 하단에 JOURNAL 네모 박스 링크 */}
+          {/* User Request: ABOUT 글 하단에 LOGO 및 JOURNAL 네모 박스 링크 */}
           <div className="about-journal-action">
+            <a
+              href="#logo"
+              className="about-journal-box-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                openLogoPage();
+              }}
+              title="라이트하우스 브랜드 로고 에셋 페이지로 이동"
+            >
+              LOGO
+            </a>
             <a
               href="#journal"
               className="about-journal-box-btn"
@@ -1197,6 +1274,7 @@ export default function App() {
                 e.preventDefault();
                 openJournalPage();
               }}
+              title="라이트하우스 저널 게시판으로 이동"
             >
               JOURNAL
             </a>
@@ -2206,6 +2284,157 @@ export default function App() {
               </div>
             );
           })()}
+        </article>
+      )}
+
+      {/* Dedicated Logo Brand Asset Page (로고 페이지) */}
+      {isLogoPage && (
+        <article id="logo-page" className="logo-page-container" aria-label="Lighthouse Brand Logo Assets">
+          {/* Top Bar Navigation */}
+          <div className="logo-page-top-bar">
+            <button
+              type="button"
+              className="logo-page-back-btn"
+              onClick={closeLogoPage}
+              title="홈으로 돌아가기 (ESC)"
+            >
+              <ArrowLeft size={16} />
+              <span>BACK TO HOME</span>
+            </button>
+
+            <div className="logo-page-breadcrumb">
+              <span>BRAND ASSETS</span>
+              <span style={{ color: "#555" }}>/</span>
+              <span className="logo-page-breadcrumb-current">LOGO</span>
+            </div>
+
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setIsAdminOpen(true)}
+                className="logo-page-admin-btn"
+                title="어드민에서 로고 URL 설정"
+              >
+                <Sparkles size={13} />
+                <span>어드민에서 로고 관리</span>
+              </button>
+            )}
+          </div>
+
+          {/* Header */}
+          <header className="logo-page-header">
+            <div className="logo-page-kicker">OFFICIAL BRAND IDENTITY · ASSETS &amp; GUIDELINES</div>
+            <h1 className="logo-page-title">LIGHTHOUSE LOGO.</h1>
+          </header>
+
+          {/* Two Large Logo Cards Grid */}
+          <div className="logo-cards-grid">
+            {/* 1. White Logo (화이트 버전 - 블랙 배경용) */}
+            <div className="logo-card logo-card-dark">
+              <div className="logo-card-header">
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span className="logo-card-badge logo-card-badge-white">WHITE VERSION</span>
+                    <span className="logo-card-badge-sub">다크 배경용</span>
+                  </div>
+                  <h2 className="logo-card-title">화이트 로고 (White Logo)</h2>
+                </div>
+                <span className="logo-card-spec">PNG · 고화질 원본 (6250 × 2500) · 투명 배경</span>
+              </div>
+
+              {/* Large Preview Box (Dark Canvas) */}
+              <div className="logo-preview-box logo-preview-dark">
+                <div className="logo-preview-canvas">
+                  <img
+                    src={resolveAssetUrl("/assets/aistudio/Lighthouse_logo_w_a03b27fe.jpg")}
+                    alt="Lighthouse White Logo Preview"
+                    className="logo-large-display-img"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = resolveAssetUrl("/images/lighthouse-logo-preview-white.jpg");
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="logo-card-footer">
+                <div className="logo-card-usage">
+                  <span className="logo-usage-dot dot-dark" />
+                  <span>검은색 또는 어두운 배경, 영상 자막, 다크 모드 UI에 적용</span>
+                </div>
+                <div className="logo-card-actions">
+                  <a
+                    href={resolveAssetUrl("/assets/aistudio/Lighthouse_WHITE_783a3cff.png")}
+                    download="Lighthouse_WHITE.png"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDirectDownload(
+                        "/assets/aistudio/Lighthouse_WHITE_783a3cff.png",
+                        "Lighthouse_WHITE.png"
+                      );
+                    }}
+                    className="logo-action-btn logo-btn-primary"
+                    title="화이트 로고 PNG 파일 바로 다운로드"
+                  >
+                    <Download size={14} />
+                    <span>PNG 다운로드</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Black Logo (블랙 버전 - 화이트 배경용) */}
+            <div className="logo-card logo-card-light">
+              <div className="logo-card-header">
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span className="logo-card-badge logo-card-badge-black">BLACK VERSION</span>
+                    <span className="logo-card-badge-sub logo-badge-sub-light">라이트 배경용</span>
+                  </div>
+                  <h2 className="logo-card-title logo-title-light">블랙 로고 (Black Logo)</h2>
+                </div>
+                <span className="logo-card-spec logo-spec-light">PNG · 고화질 원본 (6250 × 2500) · 투명 배경</span>
+              </div>
+
+              {/* Large Preview Box (Light Canvas) */}
+              <div className="logo-preview-box logo-preview-light">
+                <div className="logo-preview-canvas">
+                  <img
+                    src={resolveAssetUrl("/assets/aistudio/Lighthouse_logo_b_281ec934.jpg")}
+                    alt="Lighthouse Black Logo Preview"
+                    className="logo-large-display-img"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = resolveAssetUrl("/images/lighthouse-logo-preview-black.jpg");
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="logo-card-footer logo-footer-light">
+                <div className="logo-card-usage logo-usage-light">
+                  <span className="logo-usage-dot dot-light" />
+                  <span>흰색 또는 밝은 배경, 인쇄물, 화이트 페이퍼, 공문서에 적용</span>
+                </div>
+                <div className="logo-card-actions">
+                  <a
+                    href={resolveAssetUrl("/assets/aistudio/Lighthouse_BLACK_cb3958b4.png")}
+                    download="Lighthouse_BLACK.png"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDirectDownload(
+                        "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png",
+                        "Lighthouse_BLACK.png"
+                      );
+                    }}
+                    className="logo-action-btn logo-btn-primary"
+                    title="블랙 로고 PNG 파일 바로 다운로드"
+                  >
+                    <Download size={14} />
+                    <span>PNG 다운로드</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </article>
       )}
 

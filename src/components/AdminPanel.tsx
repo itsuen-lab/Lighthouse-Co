@@ -6895,6 +6895,111 @@ window.LIGHTHOUSE_CONTENT = ${JSON.stringify(data, null, 2)};
                   />
                 </div>
 
+                {/* Brand Logo Assets Management (회사 로고 관리) */}
+                <div style={{ marginTop: "32px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#fff", margin: 0 }}>
+                      회사 브랜드 로고 에셋 (LOGO)
+                    </h3>
+                    <span style={{ fontSize: "11px", color: "#888" }}>
+                      ABOUT 섹션 'LOGO' 박스를 누르면 이동하는 로고 페이지에 실시간 반영됩니다
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "12px", color: "#888", margin: "0 0 16px 0", lineHeight: 1.5 }}>
+                    화이트 및 블랙 버전의 고해상도 PNG 로고 URL을 등록/변경할 수 있습니다. (구글 드라이브 링크 및 웹 이미지 URL 지원)
+                  </p>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "16px" }}>
+                    {/* 1. White Logo (Dark BG) */}
+                    <div style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)", padding: "16px", borderRadius: "3px" }}>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#f1f1ee", marginBottom: "6px" }}>
+                        ⚪ 화이트 로고 URL (다크 배경용 PNG)
+                      </label>
+                      <input
+                        type="text"
+                        value={data.logo?.whiteLogoUrl || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setData((prev) => ({
+                            ...prev,
+                            logo: {
+                              ...(prev.logo || {}),
+                              whiteLogoUrl: val,
+                            },
+                          }));
+                        }}
+                        placeholder="/assets/aistudio/Lighthouse_WHITE_783a3cff.png 또는 이미지 URL"
+                        style={{
+                          width: "100%",
+                          background: "#141414",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          color: "#fff",
+                          padding: "8px 12px",
+                          fontSize: "12px",
+                          outline: "none",
+                          fontFamily: "monospace",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {/* Mini preview */}
+                      <div style={{ marginTop: "10px", background: "#000", border: "1px solid #222", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "56px" }}>
+                        <img
+                          src={resolveAssetUrl(data.logo?.whiteLogoUrl || "/assets/aistudio/Lighthouse_WHITE_783a3cff.png")}
+                          alt="White logo preview"
+                          style={{ maxHeight: "36px", maxWidth: "100%", objectFit: "contain" }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = resolveAssetUrl("/assets/aistudio/Lighthouse_WHITE_783a3cff.png");
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 2. Black Logo (Light BG) */}
+                    <div style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)", padding: "16px", borderRadius: "3px" }}>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#f1f1ee", marginBottom: "6px" }}>
+                        ⚫ 블랙 로고 URL (라이트 배경용 PNG)
+                      </label>
+                      <input
+                        type="text"
+                        value={data.logo?.blackLogoUrl || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setData((prev) => ({
+                            ...prev,
+                            logo: {
+                              ...(prev.logo || {}),
+                              blackLogoUrl: val,
+                            },
+                          }));
+                        }}
+                        placeholder="/assets/aistudio/Lighthouse_BLACK_cb3958b4.png 또는 이미지 URL"
+                        style={{
+                          width: "100%",
+                          background: "#141414",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          color: "#fff",
+                          padding: "8px 12px",
+                          fontSize: "12px",
+                          outline: "none",
+                          fontFamily: "monospace",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {/* Mini preview */}
+                      <div style={{ marginTop: "10px", background: "#ffffff", border: "1px solid #ddd", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "56px" }}>
+                        <img
+                          src={resolveAssetUrl(data.logo?.blackLogoUrl || "/assets/aistudio/Lighthouse_BLACK_cb3958b4.png")}
+                          alt="Black logo preview"
+                          style={{ maxHeight: "36px", maxWidth: "100%", objectFit: "contain" }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = resolveAssetUrl("/assets/aistudio/Lighthouse_BLACK_cb3958b4.png");
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ marginTop: "24px", paddingTop: "18px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                   <div style={{ fontSize: "12px", color: "#777" }}>
                     * 텍스트를 입력하는 즉시 메인 페이지 ABOUT 섹션과 데이터베이스에 실시간으로 반영됩니다.
